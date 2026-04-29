@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.10] - 2026-04-29
+
+### Fixed
+- `forge0 verify --remote` now correctly blocks release authorization on upstream/remote synchronization failures.
+- Updated `remote.branch_at_head` and `remote.tag_at_head` checks to `critical` severity.
+- Updated `remote.branch_not_ahead`, `remote.branch_not_behind`, and `remote.sync_state` checks to `high` severity.
+- Added `--remote` support to `forge0 ledger record --event verify` to properly record remote-verified trust events.
+
 ## [0.1.9] - 2026-04-29
 
 ### Added

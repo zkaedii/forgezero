@@ -17,7 +17,7 @@ import { buildTrustReport } from '../trust/status.js';
 import type { TrustReport } from '../trust/types.js';
 import { runVerify } from '../verify/verify.js';
 import { buildReleaseReceipt } from '../receipt/receipt.js';
-import type { VerifyMode } from '../verify/types.js';
+import type { VerifyMode, VerifyOptions } from '../verify/types.js';
 
 // ─── Path Resolution ───────────────────────────────────────────────
 
@@ -233,8 +233,13 @@ export function verifyLedger(repoRoot: string): LedgerVerificationResult {
 
 // ─── Event Recorders ───────────────────────────────────────────────
 
-export function recordVerifyEvent(repoRoot: string, mode: VerifyMode, cliVersion?: string): LedgerEntry {
-  const result = runVerify(repoRoot, mode, cliVersion);
+export function recordVerifyEvent(
+  repoRoot: string, 
+  mode: VerifyMode, 
+  cliVersion?: string,
+  opts: VerifyOptions = {}
+): LedgerEntry {
+  const result = runVerify(repoRoot, mode, cliVersion, opts);
 
   return appendLedgerEntry(repoRoot, {
     event: 'verify',
@@ -260,7 +265,7 @@ export function recordVerifyEvent(repoRoot: string, mode: VerifyMode, cliVersion
       verified: ['local repository state', 'verification gates'],
       notObservable: ['remote CI', 'runtime agent behavior'],
     },
-    sourceCommand: `forge0 verify --mode ${mode}`,
+    sourceCommand: `forge0 verify --mode ${mode}${opts.remote ? ' --remote' : ''}`,
   }, cliVersion);
 }
 

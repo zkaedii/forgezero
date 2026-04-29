@@ -691,13 +691,14 @@ ledger
   .description('Record a trust event to the ledger')
   .requiredOption('-e, --event <event>', 'Event kind (verify|receipt)')
   .option('-m, --mode <mode>', 'Mode (for verify event)', 'release')
+  .option('--remote', 'Include remote checks when recording verify event')
   .option('--json', 'Emit JSON instead of formatted text')
   .action((opts) => {
     const repoRoot = process.cwd();
     let entry;
 
     if (opts.event === 'verify') {
-      entry = recordVerifyEvent(repoRoot, opts.mode as any, pkgVersion);
+      entry = recordVerifyEvent(repoRoot, opts.mode as any, pkgVersion, { remote: !!opts.remote });
     } else if (opts.event === 'receipt') {
       entry = recordReceiptEvent(repoRoot, pkgVersion);
     } else {

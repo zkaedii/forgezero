@@ -125,13 +125,13 @@ export function runVerify(
             id: 'remote.branch_at_head',
             label: `Remote origin/${branch} points to HEAD`,
             passed: match,
-            severity: 'medium',
+            severity: 'critical',
             detail: match 
               ? 'Synchronization confirmed.' 
               : (remoteHash ? `Mismatch! Remote: ${remoteHash.slice(0, 7)}, Local: ${head?.slice(0, 7)}` : `Remote branch origin/${branch} not found.`),
           });
         } catch {
-          checks.push({ id: 'remote.branch_at_head', label: `Remote origin/${branch} check failed`, passed: false, severity: 'medium', detail: 'Network or git error.' });
+          checks.push({ id: 'remote.branch_at_head', label: `Remote origin/${branch} check failed`, passed: false, severity: 'critical', detail: 'Network or git error.' });
         }
       }
 
@@ -146,13 +146,13 @@ export function runVerify(
             id: 'remote.tag_at_head',
             label: `Remote tag ${tagName} points to HEAD`,
             passed: match,
-            severity: 'high',
+            severity: 'critical',
             detail: match 
               ? 'Synchronization confirmed.' 
               : (remoteHash ? `Mismatch! Remote: ${remoteHash.slice(0, 7)}, Local: ${head?.slice(0, 7)}` : `Remote tag ${tagName} is missing. Run: git push origin ${tagName}`),
           });
         } catch {
-          checks.push({ id: 'remote.tag_at_head', label: `Remote tag ${tagName} check failed`, passed: false, severity: 'high', detail: 'Network or git error.' });
+          checks.push({ id: 'remote.tag_at_head', label: `Remote tag ${tagName} check failed`, passed: false, severity: 'critical', detail: 'Network or git error.' });
         }
       }
 
@@ -165,20 +165,20 @@ export function runVerify(
             id: 'remote.branch_not_ahead',
             label: 'Local branch is not ahead of upstream',
             passed: ab.ahead === 0,
-            severity: 'medium',
+            severity: 'high',
             detail: ab.ahead === 0 ? 'Clean.' : `Local branch is ahead of upstream by ${ab.ahead} commit(s). Run: git push origin ${branch}`,
           });
           checks.push({
             id: 'remote.branch_not_behind',
             label: 'Local branch is not behind upstream',
             passed: ab.behind === 0,
-            severity: 'medium',
+            severity: 'high',
             detail: ab.behind === 0 ? 'Clean.' : `Local branch is behind upstream by ${ab.behind} commit(s). Run: git pull --ff-only`,
           });
         }
       } catch {
         // Upstream might not be set
-        checks.push({ id: 'remote.sync_state', label: 'Upstream synchronization check', passed: false, severity: 'low', detail: 'No upstream set or network error.' });
+        checks.push({ id: 'remote.sync_state', label: 'Upstream synchronization check', passed: false, severity: 'high', detail: 'No upstream set or network error.' });
       }
     }
   }

@@ -2,8 +2,8 @@
 
 Governance and provenance CLI for Antigravity `.agents/` surface.
 
-[![tests](https://img.shields.io/badge/tests-111%2F111-green)](./tests)
-[![version](https://img.shields.io/badge/version-0.1.9-blue)](./package.json)
+[![tests](https://img.shields.io/badge/tests-116%2F116-green)](./tests)
+[![version](https://img.shields.io/badge/version-0.1.10-blue)](./package.json)
 [![license](https://img.shields.io/badge/license-MIT-yellow)](./LICENSE)
 
 > **The honesty bound is load-bearing.** ForgeZero never claims to detect
@@ -25,7 +25,7 @@ forge0 status           # trust posture at a glance
 forge0 doctor           # diagnose drift and release hazards
 forge0 verify --remote  # enforce trust criteria for release
 forge0 receipt          # generate a release attestation
-forge0 ledger record --event verify --mode release # record trust event
+forge0 ledger record --event verify --mode release --remote # record trust event
 ```
 
 ## Commands
