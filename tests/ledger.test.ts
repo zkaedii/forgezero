@@ -22,16 +22,16 @@ import { execSync } from 'node:child_process';
  * and CHANGELOG.md so recordVerifyEvent/recordReceiptEvent can resolve
  * version metadata and trust report without touching the real repo.
  */
-function createTempGitRepo(): string {
+function createTempGitRepo(version = '0.0.1'): string {
   const dir = mkdtempSync(join(tmpdir(), 'forge0-ledger-test-'));
   execSync('git init', { cwd: dir, stdio: 'pipe' });
   execSync('git config user.email "test@test.com"', { cwd: dir, stdio: 'pipe' });
   execSync('git config user.name "test"', { cwd: dir, stdio: 'pipe' });
-  writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'test', version: '0.0.1' }));
+  writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'test', version }));
   writeFileSync(join(dir, 'package-lock.json'), JSON.stringify({
-    name: 'test', version: '0.0.1', lockfileVersion: 3, packages: { '': { version: '0.0.1' } }
+    name: 'test', version, lockfileVersion: 3, packages: { '': { version } }
   }));
-  writeFileSync(join(dir, 'CHANGELOG.md'), '# Changelog\n\n## [0.0.1]\n\n- test\n');
+  writeFileSync(join(dir, 'CHANGELOG.md'), `# Changelog\n\n## [${version}]\n\n- test\n`);
   execSync('git add -A', { cwd: dir, stdio: 'pipe' });
   execSync('git commit -m "init"', { cwd: dir, stdio: 'pipe' });
   return dir;
@@ -220,7 +220,7 @@ describe('ledger record events — isolated', () => {
   let testRepo: string;
 
   beforeEach(() => {
-    testRepo = createTempGitRepo();
+    testRepo = createTempGitRepo('0.8.8');
   });
 
   afterEach(() => {
@@ -245,11 +245,21 @@ describe('ledger record events — isolated', () => {
     expect(entry.version?.cli).toBe('99.0.0');
   });
 
-  it('ledger entries include expected tag metadata', () => {
+  it('ledger entries include expected version metadata', () => {
+    const entry = recordVerifyEvent(testRepo, 'release', '0.1.8');
+    expect(entry.version?.package).toBe('0.8.8');
+    expect(entry.version?.cli).toBe('0.1.8');
+    expect(entry.version?.lock).toBe('0.8.8');
+    expect(entry.version?.expectedTag).toBe('v0.8.8');
+  });
+
+  it('ledger entries include expectedTagAtHead when applicable', () => {
+    // In our temp repo, HEAD has tag v0.8.8 (because we did git add -A; git commit -m "init")
+    // Wait, the helper doesn't tag. Let's tag.
+    execSync('git tag v0.8.8', { cwd: testRepo, stdio: 'pipe' });
+    
     const entry = recordVerifyEvent(testRepo, 'release');
-    expect(entry.version?.package).toBe('0.0.1');
-    expect(entry.version?.expectedTag).toBe('v0.0.1');
-    expect(entry.version?.lock).toBe('0.0.1');
+    expect(entry.version?.expectedTagAtHead).toBe(true);
   });
 
   it('tests do not create .forge0/ledger.jsonl in the real repo', () => {
@@ -259,11 +269,9 @@ describe('ledger record events — isolated', () => {
     recordVerifyEvent(testRepo, 'release');
     recordReceiptEvent(testRepo);
 
-    if (!hadLedger) {
-      // If there was no ledger before, there should still be none
-      // (ledger may already exist from prior manual runs — that's fine)
-      expect(existsSync(getLedgerPath(testRepo))).toBe(true);
-    }
+    // This test is mostly about side effects. 
+    // We already use testRepo, so it's isolated by design.
+    expect(existsSync(getLedgerPath(testRepo))).toBe(true);
   });
 });
 
@@ -287,11 +295,27 @@ describe('ledger CLI JSON', () => {
     expect(out.trim().startsWith('{')).toBe(true);
   });
 
-  it('CLI ledger last --json has found field', () => {
-    const out = execSync('npx tsx bin/forge0.ts ledger last --json', { encoding: 'utf-8' });
-    const parsed = JSON.parse(out);
-    expect(parsed).toHaveProperty('found');
-    expect(typeof parsed.found).toBe('boolean');
-    expect(parsed).toHaveProperty('entry');
+  it('CLI ledger last --json has found field even if empty', () => {
+    // Create an empty temp repo and run CLI there
+    const emptyDir = mkdtempSync(join(tmpdir(), 'forge0-empty-'));
+    try {
+      let out: string;
+      try {
+        out = execSync(`npx tsx ${join(process.cwd(), 'bin/forge0.ts')} ledger last --json`, { 
+          cwd: emptyDir,
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'ignore'] 
+        });
+      } catch (e: any) {
+        out = e.stdout;
+      }
+      
+      const parsed = JSON.parse(out);
+      expect(parsed).toHaveProperty('found');
+      expect(parsed.found).toBe(false);
+      expect(parsed.entry).toBe(null);
+    } finally {
+      rmSync(emptyDir, { recursive: true, force: true });
+    }
   });
 });

@@ -772,7 +772,7 @@ ledger
     const entry = getLastLedgerEntry(repoRoot);
 
     if (opts.json) {
-      process.stdout.write(JSON.stringify({ found: entry !== null, entry }, null, 2) + '\n');
+      process.stdout.write(JSON.stringify({ found: !!entry, entry }, null, 2) + '\n');
       process.exit(entry ? 0 : 2);
     }
 

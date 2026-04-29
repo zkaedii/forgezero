@@ -14,6 +14,7 @@ import type {
   LedgerVerificationResult,
 } from './types.js';
 import { buildTrustReport } from '../trust/status.js';
+import type { TrustReport } from '../trust/types.js';
 import { runVerify } from '../verify/verify.js';
 import { buildReleaseReceipt } from '../receipt/receipt.js';
 import type { VerifyMode } from '../verify/types.js';
@@ -62,7 +63,11 @@ function makeLedgerId(timestamp: string, sequence: number): string {
  * Reads version metadata from package.json and package-lock.json.
  * Purely filesystem-based, no shell.
  */
-function resolveVersionMetadata(repoRoot: string, cliVersion?: string): LedgerEntry['version'] {
+function resolveVersionMetadata(
+  repoRoot: string,
+  cliVersion?: string,
+  trust?: TrustReport
+): LedgerEntry['version'] {
   let pkg: string | undefined;
   let lock: string | undefined;
 
@@ -75,17 +80,19 @@ function resolveVersionMetadata(repoRoot: string, cliVersion?: string): LedgerEn
   if (existsSync(lockPath)) {
     try {
       const lockData = JSON.parse(readFileSync(lockPath, 'utf-8'));
-      lock = lockData.version || lockData.packages?.['']?.version;
+      lock = lockData.packages?.['']?.version ?? lockData.version;
     } catch { /* skip */ }
   }
 
   const expectedTag = pkg ? `v${pkg}` : undefined;
+  const expectedTagAtHead = (expectedTag && trust?.git?.tagsAtHead?.includes(expectedTag)) || false;
 
   return {
     package: pkg,
     cli: cliVersion,
     lock,
     expectedTag,
+    expectedTagAtHead,
   };
 }
 
@@ -125,7 +132,7 @@ export function appendLedgerEntry(repoRoot: string, input: LedgerRecordInput, cl
   const timestamp = new Date().toISOString();
   const sequence = (previous?.sequence ?? 0) + 1;
 
-  const versionMeta = resolveVersionMetadata(repoRoot, cliVersion);
+  const versionMeta = resolveVersionMetadata(repoRoot, cliVersion, trust);
 
   const entryData: Omit<LedgerEntry, 'hash'> & { hash: { previous?: string; algorithm: 'sha256' } } = {
     id: makeLedgerId(timestamp, sequence),
@@ -228,7 +235,7 @@ export function verifyLedger(repoRoot: string): LedgerVerificationResult {
 
 export function recordVerifyEvent(repoRoot: string, mode: VerifyMode, cliVersion?: string): LedgerEntry {
   const result = runVerify(repoRoot, mode, cliVersion);
-  
+
   return appendLedgerEntry(repoRoot, {
     event: 'verify',
     mode,
