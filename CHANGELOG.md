@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.12] - 2026-04-29
+
+### Fixed
+- Updated `README.md` test badge to avoid unnecessary churn.
+- Removed network-dependent remote integration tests to ensure test suite remains isolated and deterministic.
+
 ## [0.1.11] - 2026-04-29
 
 ### Added

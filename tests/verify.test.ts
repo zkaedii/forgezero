@@ -85,21 +85,4 @@ describe('runVerify', () => {
     expect(result.score).toBe(expectedScore);
   });
 
-  it('supports --remote flag in options', () => {
-    const result = runVerify(REPO_ROOT, 'release', undefined, { remote: true });
-    // Should include remote checks
-    const checkIds = result.checks.map(c => c.id);
-    expect(checkIds).toContain('remote.branch_at_head');
-    expect(checkIds).toContain('remote.tag_at_head');
-
-    // Remote checks should be high or critical to block release
-    const branchCheck = result.checks.find(c => c.id === 'remote.branch_at_head');
-    expect(branchCheck?.severity).toBe('critical');
-
-    const tagCheck = result.checks.find(c => c.id === 'remote.tag_at_head');
-    expect(tagCheck?.severity).toBe('critical');
-
-    const aheadCheck = result.checks.find(c => c.id === 'remote.branch_not_ahead');
-    if (aheadCheck) expect(aheadCheck.severity).toBe('high');
-  });
 });

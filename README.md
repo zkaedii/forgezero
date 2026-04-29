@@ -2,7 +2,7 @@
 
 Governance and provenance CLI for Antigravity `.agents/` surface.
 
-[![tests](https://img.shields.io/badge/tests-116%2F116-green)](./tests)
+[![tests](https://img.shields.io/badge/tests-passing-green)](./tests)
 [![version](https://img.shields.io/badge/version-0.1.11-blue)](./package.json)
 [![license](https://img.shields.io/badge/license-MIT-yellow)](./LICENSE)
 
@@ -23,9 +23,9 @@ forge0 share --tag v1   # secret-scrub-bundle for distribution
 forge0 install-hook     # install 3-gate pre-commit audit hook
 forge0 status           # trust posture at a glance
 forge0 doctor           # diagnose drift and release hazards
-forge0 verify --remote  # enforce trust criteria for release
-forge0 receipt          # generate a release attestation
-forge0 ledger record --event verify --mode release --remote # record trust event
+forge0 verify --mode release --remote --ci  # enforce trust criteria for release
+forge0 receipt                              # generate a release attestation
+forge0 ledger record --event verify --mode release --remote --ci # record trust event
 ```
 
 ## Commands
