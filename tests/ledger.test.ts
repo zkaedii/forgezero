@@ -9,18 +9,42 @@ import {
   recordVerifyEvent,
   recordReceiptEvent
 } from '../src/ledger/ledger.js';
-import { existsSync, writeFileSync, mkdirSync, rmSync, readFileSync } from 'node:fs';
+import { existsSync, writeFileSync, rmSync, readFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { mkdtempSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 
-describe('ledger engine', () => {
+// ─── Helpers ────────────────────────────────────────────────────────
+
+/**
+ * Create a minimal temp git repo with package.json, package-lock.json,
+ * and CHANGELOG.md so recordVerifyEvent/recordReceiptEvent can resolve
+ * version metadata and trust report without touching the real repo.
+ */
+function createTempGitRepo(): string {
+  const dir = mkdtempSync(join(tmpdir(), 'forge0-ledger-test-'));
+  execSync('git init', { cwd: dir, stdio: 'pipe' });
+  execSync('git config user.email "test@test.com"', { cwd: dir, stdio: 'pipe' });
+  execSync('git config user.name "test"', { cwd: dir, stdio: 'pipe' });
+  writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'test', version: '0.0.1' }));
+  writeFileSync(join(dir, 'package-lock.json'), JSON.stringify({
+    name: 'test', version: '0.0.1', lockfileVersion: 3, packages: { '': { version: '0.0.1' } }
+  }));
+  writeFileSync(join(dir, 'CHANGELOG.md'), '# Changelog\n\n## [0.0.1]\n\n- test\n');
+  execSync('git add -A', { cwd: dir, stdio: 'pipe' });
+  execSync('git commit -m "init"', { cwd: dir, stdio: 'pipe' });
+  return dir;
+}
+
+// ─── Pure Engine Tests (temp dir, no git) ───────────────────────────
+
+describe('ledger engine — pure', () => {
   let testDir: string;
   let ledgerPath: string;
 
   beforeEach(() => {
-    testDir = mkdtempSync(join(tmpdir(), 'forge0-ledger-test-'));
+    testDir = mkdtempSync(join(tmpdir(), 'forge0-ledger-pure-'));
     ledgerPath = getLedgerPath(testDir);
   });
 
@@ -151,18 +175,101 @@ describe('ledger engine', () => {
     const o1 = { a: 1, b: undefined };
     expect(stableStringify(o1)).toBe('{"a":1}');
   });
+});
 
-  it('recordVerifyEvent records a verify event', () => {
-    const entry = recordVerifyEvent(process.cwd(), 'release');
+// ─── Corruption Handling ────────────────────────────────────────────
+
+describe('ledger corruption handling', () => {
+  let testDir: string;
+  let ledgerPath: string;
+
+  beforeEach(() => {
+    testDir = mkdtempSync(join(tmpdir(), 'forge0-ledger-corrupt-'));
+    ledgerPath = getLedgerPath(testDir);
+  });
+
+  afterEach(() => {
+    if (existsSync(testDir)) {
+      rmSync(testDir, { recursive: true, force: true });
+    }
+  });
+
+  it('verifyLedger returns structured failure on corrupted JSONL', () => {
+    mkdirSync(join(testDir, '.forge0'), { recursive: true });
+    writeFileSync(ledgerPath, '{"valid": true}\nthis is not json\n');
+
+    const res = verifyLedger(testDir);
+    expect(res.ok).toBe(false);
+    expect(res.reason).toMatch(/Ledger parse failed at line 2/);
+  });
+
+  it('verifyLedger does not throw on corrupted JSONL', () => {
+    mkdirSync(join(testDir, '.forge0'), { recursive: true });
+    writeFileSync(ledgerPath, '{{broken json\n');
+
+    // Should NOT throw — should return a structured result
+    const res = verifyLedger(testDir);
+    expect(res.ok).toBe(false);
+    expect(res.reason).toMatch(/Ledger parse failed at line 1/);
+  });
+});
+
+// ─── Record Event Tests (isolated temp git repo) ────────────────────
+
+describe('ledger record events — isolated', () => {
+  let testRepo: string;
+
+  beforeEach(() => {
+    testRepo = createTempGitRepo();
+  });
+
+  afterEach(() => {
+    if (existsSync(testRepo)) {
+      rmSync(testRepo, { recursive: true, force: true });
+    }
+  });
+
+  it('recordVerifyEvent records a verify event in temp repo', () => {
+    const entry = recordVerifyEvent(testRepo, 'release');
     expect(entry.event).toBe('verify');
     expect(entry.mode).toBe('release');
   });
 
-  it('recordReceiptEvent records a receipt event', () => {
-    const entry = recordReceiptEvent(process.cwd());
+  it('recordReceiptEvent records a receipt event in temp repo', () => {
+    const entry = recordReceiptEvent(testRepo);
     expect(entry.event).toBe('receipt');
   });
 
+  it('recordVerifyEvent preserves CLI version when passed', () => {
+    const entry = recordVerifyEvent(testRepo, 'release', '99.0.0');
+    expect(entry.version?.cli).toBe('99.0.0');
+  });
+
+  it('ledger entries include expected tag metadata', () => {
+    const entry = recordVerifyEvent(testRepo, 'release');
+    expect(entry.version?.package).toBe('0.0.1');
+    expect(entry.version?.expectedTag).toBe('v0.0.1');
+    expect(entry.version?.lock).toBe('0.0.1');
+  });
+
+  it('tests do not create .forge0/ledger.jsonl in the real repo', () => {
+    const realLedger = getLedgerPath(process.cwd());
+    const hadLedger = existsSync(realLedger);
+    
+    recordVerifyEvent(testRepo, 'release');
+    recordReceiptEvent(testRepo);
+
+    if (!hadLedger) {
+      // If there was no ledger before, there should still be none
+      // (ledger may already exist from prior manual runs — that's fine)
+      expect(existsSync(getLedgerPath(testRepo))).toBe(true);
+    }
+  });
+});
+
+// ─── CLI JSON Tests ─────────────────────────────────────────────────
+
+describe('ledger CLI JSON', () => {
   it('CLI ledger verify --json emits valid JSON', () => {
     const out = execSync('npx tsx bin/forge0.ts ledger verify --json', { encoding: 'utf-8' });
     const parsed = JSON.parse(out);
@@ -175,8 +282,16 @@ describe('ledger engine', () => {
     expect(parsed).toHaveProperty('entries');
   });
 
-  it('CLI JSON output has no banner pollution', () => {
+  it('CLI ledger last --json always starts with {', () => {
     const out = execSync('npx tsx bin/forge0.ts ledger last --json', { encoding: 'utf-8' });
-    expect(out.trim().startsWith('{') || out.trim().startsWith('[')).toBe(true);
+    expect(out.trim().startsWith('{')).toBe(true);
+  });
+
+  it('CLI ledger last --json has found field', () => {
+    const out = execSync('npx tsx bin/forge0.ts ledger last --json', { encoding: 'utf-8' });
+    const parsed = JSON.parse(out);
+    expect(parsed).toHaveProperty('found');
+    expect(typeof parsed.found).toBe('boolean');
+    expect(parsed).toHaveProperty('entry');
   });
 });

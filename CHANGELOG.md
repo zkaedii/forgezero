@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.8] - 2026-04-29
+
+### Fixed
+- Ledger tests no longer mutate the real repo `.forge0/ledger.jsonl`; all record tests use isolated temp git repos.
+- `ledger last --json` now always emits `{"found": bool, "entry": ...}` instead of raw `null`.
+- `ledger verify` gracefully handles corrupted JSONL instead of crashing with a stack trace.
+- `recordVerifyEvent()` now receives and passes `cliVersion` for exact parity with CLI verify.
+- Ledger entries now include full version metadata: `package`, `cli`, `lock`, and `expectedTag`.
+
+### Added
+- `ledger record --json` flag for CI-friendly event recording.
+- Corruption detection tests for malformed JSONL.
+- JSON shape tests enforcing `{found, entry}` convention.
+
 ## [0.1.7] - 2026-04-29
 
 ### Added

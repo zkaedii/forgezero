@@ -691,17 +691,23 @@ ledger
   .description('Record a trust event to the ledger')
   .requiredOption('-e, --event <event>', 'Event kind (verify|receipt)')
   .option('-m, --mode <mode>', 'Mode (for verify event)', 'release')
+  .option('--json', 'Emit JSON instead of formatted text')
   .action((opts) => {
     const repoRoot = process.cwd();
     let entry;
 
     if (opts.event === 'verify') {
-      entry = recordVerifyEvent(repoRoot, opts.mode as any);
+      entry = recordVerifyEvent(repoRoot, opts.mode as any, pkgVersion);
     } else if (opts.event === 'receipt') {
-      entry = recordReceiptEvent(repoRoot);
+      entry = recordReceiptEvent(repoRoot, pkgVersion);
     } else {
       console.error(fmt.redBold(`\u2717 Unknown event kind: ${opts.event}`));
       process.exit(1);
+    }
+
+    if (opts.json) {
+      process.stdout.write(JSON.stringify(entry, null, 2) + '\n');
+      process.exit(0);
     }
 
     console.log(sectionHeader('FORGEZERO LEDGER'));
@@ -766,7 +772,7 @@ ledger
     const entry = getLastLedgerEntry(repoRoot);
 
     if (opts.json) {
-      process.stdout.write(JSON.stringify(entry, null, 2) + '\n');
+      process.stdout.write(JSON.stringify({ found: entry !== null, entry }, null, 2) + '\n');
       process.exit(entry ? 0 : 2);
     }
 

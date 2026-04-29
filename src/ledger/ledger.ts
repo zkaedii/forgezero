@@ -4,14 +4,13 @@
  * Implements an append-only, hash-chained JSONL record of trust events.
  */
 
-import { readFileSync, writeFileSync, appendFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, appendFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import type {
   LedgerEntry,
-  LedgerEventKind,
-  LedgerEventResult,
   LedgerRecordInput,
+  LedgerEventResult,
   LedgerVerificationResult,
 } from './types.js';
 import { buildTrustReport } from '../trust/status.js';
@@ -29,6 +28,7 @@ export function getLedgerPath(repoRoot: string): string {
 
 /**
  * stableStringify — Recursively sort keys for deterministic hashing.
+ * Skips undefined values to match JSON.stringify round-trip behavior.
  */
 export function stableStringify(value: unknown): string {
   if (value === null || typeof value !== 'object') {
@@ -56,6 +56,39 @@ function makeLedgerId(timestamp: string, sequence: number): string {
   return `led_${cleanTs}_${String(sequence).padStart(6, '0')}`;
 }
 
+// ─── Version Metadata ──────────────────────────────────────────────
+
+/**
+ * Reads version metadata from package.json and package-lock.json.
+ * Purely filesystem-based, no shell.
+ */
+function resolveVersionMetadata(repoRoot: string, cliVersion?: string): LedgerEntry['version'] {
+  let pkg: string | undefined;
+  let lock: string | undefined;
+
+  const pkgPath = join(repoRoot, 'package.json');
+  if (existsSync(pkgPath)) {
+    try { pkg = JSON.parse(readFileSync(pkgPath, 'utf-8')).version; } catch { /* skip */ }
+  }
+
+  const lockPath = join(repoRoot, 'package-lock.json');
+  if (existsSync(lockPath)) {
+    try {
+      const lockData = JSON.parse(readFileSync(lockPath, 'utf-8'));
+      lock = lockData.version || lockData.packages?.['']?.version;
+    } catch { /* skip */ }
+  }
+
+  const expectedTag = pkg ? `v${pkg}` : undefined;
+
+  return {
+    package: pkg,
+    cli: cliVersion,
+    lock,
+    expectedTag,
+  };
+}
+
 // ─── Read/Write ───────────────────────────────────────────────────
 
 export function readLedger(repoRoot: string): LedgerEntry[] {
@@ -81,7 +114,7 @@ export function getLastLedgerEntry(repoRoot: string): LedgerEntry | null {
   return entries.length > 0 ? entries[entries.length - 1] : null;
 }
 
-export function appendLedgerEntry(repoRoot: string, input: LedgerRecordInput): LedgerEntry {
+export function appendLedgerEntry(repoRoot: string, input: LedgerRecordInput, cliVersion?: string): LedgerEntry {
   const ledgerDir = join(repoRoot, '.forge0');
   if (!existsSync(ledgerDir)) mkdirSync(ledgerDir, { recursive: true });
 
@@ -91,6 +124,8 @@ export function appendLedgerEntry(repoRoot: string, input: LedgerRecordInput): L
   const trust = buildTrustReport(repoRoot);
   const timestamp = new Date().toISOString();
   const sequence = (previous?.sequence ?? 0) + 1;
+
+  const versionMeta = resolveVersionMetadata(repoRoot, cliVersion);
 
   const entryData: Omit<LedgerEntry, 'hash'> & { hash: { previous?: string; algorithm: 'sha256' } } = {
     id: makeLedgerId(timestamp, sequence),
@@ -106,17 +141,13 @@ export function appendLedgerEntry(repoRoot: string, input: LedgerRecordInput): L
       tagsAtHead: trust.git?.tagsAtHead ?? [],
       dirty: !trust.git?.clean,
     },
-    version: {
-      package: trust.version,
-      cli: process.env.FORGE0_VERSION, // Optional: might be passed in
-      // Note: we can expand this with lock/expected tag if needed
-    },
+    version: versionMeta,
     summary: input.summary,
     checks: input.checks,
     honesty: input.honesty,
     source: {
       command: input.sourceCommand,
-      forgezeroVersion: trust.version,
+      forgezeroVersion: versionMeta?.package,
     },
     hash: {
       previous: previous?.hash.current,
@@ -145,7 +176,21 @@ export function appendLedgerEntry(repoRoot: string, input: LedgerRecordInput): L
 // ─── Verification ──────────────────────────────────────────────────
 
 export function verifyLedger(repoRoot: string): LedgerVerificationResult {
-  const entries = readLedger(repoRoot);
+  let entries: LedgerEntry[];
+
+  try {
+    entries = readLedger(repoRoot);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    const lineMatch = msg.match(/line (\d+)/);
+    return {
+      ok: false,
+      entryCount: 0,
+      brokenAt: lineMatch ? Number(lineMatch[1]) : undefined,
+      reason: msg,
+    };
+  }
+
   if (entries.length === 0) {
     return { ok: true, entryCount: 0 };
   }
@@ -181,8 +226,8 @@ export function verifyLedger(repoRoot: string): LedgerVerificationResult {
 
 // ─── Event Recorders ───────────────────────────────────────────────
 
-export function recordVerifyEvent(repoRoot: string, mode: VerifyMode): LedgerEntry {
-  const result = runVerify(repoRoot, mode);
+export function recordVerifyEvent(repoRoot: string, mode: VerifyMode, cliVersion?: string): LedgerEntry {
+  const result = runVerify(repoRoot, mode, cliVersion);
   
   return appendLedgerEntry(repoRoot, {
     event: 'verify',
@@ -209,10 +254,10 @@ export function recordVerifyEvent(repoRoot: string, mode: VerifyMode): LedgerEnt
       notObservable: ['remote CI', 'runtime agent behavior'],
     },
     sourceCommand: `forge0 verify --mode ${mode}`,
-  });
+  }, cliVersion);
 }
 
-export function recordReceiptEvent(repoRoot: string): LedgerEntry {
+export function recordReceiptEvent(repoRoot: string, cliVersion?: string): LedgerEntry {
   const receipt = buildReleaseReceipt(repoRoot);
   const result: LedgerEventResult = receipt.doctor.releaseReady ? 'pass' : (receipt.doctor.blockingFindings.length > 0 ? 'fail' : 'warn');
 
@@ -234,5 +279,5 @@ export function recordReceiptEvent(repoRoot: string): LedgerEntry {
     })),
     honesty: receipt.honesty,
     sourceCommand: 'forge0 receipt',
-  });
+  }, cliVersion);
 }
