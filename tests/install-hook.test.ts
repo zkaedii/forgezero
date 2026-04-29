@@ -30,7 +30,8 @@ function installHookInTempRepo(): string {
     });
 
     // Run install-hook via tsx, pointed at the temp repo
-    execSync(`npx tsx ${resolve(import.meta.dirname, '../bin/forge0.ts')} install-hook`, {
+    const tsxPath = resolve(import.meta.dirname, '../node_modules/tsx/dist/cli.mjs');
+    execSync(`"${process.execPath}" "${tsxPath}" "${resolve(import.meta.dirname, '../bin/forge0.ts')}" install-hook`, {
       cwd: dir,
       stdio: 'pipe',
     });

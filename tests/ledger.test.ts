@@ -306,8 +306,9 @@ describe('ledger CLI JSON', () => {
     const emptyDir = mkdtempSync(join(tmpdir(), 'forge0-ledger-empty-'));
 
     try {
+      const tsxPath = join(process.cwd(), 'node_modules/tsx/dist/cli.mjs');
       const out = execCliAllowFailure(
-        `npx tsx ${join(process.cwd(), 'bin/forge0.ts')} ledger last --json`,
+        `"${process.execPath}" "${tsxPath}" "${join(process.cwd(), 'bin/forge0.ts')}" ledger last --json`,
         emptyDir
       );
 
@@ -328,7 +329,8 @@ describe('ledger CLI JSON', () => {
     try {
       let out: string;
       try {
-        out = execSync(`npx tsx ${join(process.cwd(), 'bin/forge0.ts')} ledger last --json`, { 
+        const tsxPath = join(process.cwd(), 'node_modules/tsx/dist/cli.mjs');
+        out = execSync(`"${process.execPath}" "${tsxPath}" "${join(process.cwd(), 'bin/forge0.ts')}" ledger last --json`, { 
           cwd: emptyDir,
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'ignore'] 

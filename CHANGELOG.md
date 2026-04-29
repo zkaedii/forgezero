@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.15] - 2026-04-29
+
+### Fixed
+- Fixed CI test failures by replacing `npx tsx` with a direct Node execution of the local `tsx` CLI binary in tests (`node_modules/tsx/dist/cli.mjs`). This prevents `npx` from interactively prompting for package installation when tests run in an empty temporary directory (`/tmp`) on CI runners where `tsx` is not globally installed.
+
 ## [0.1.14] - 2026-04-29
 
 ### Fixed
