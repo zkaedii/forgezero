@@ -2,8 +2,9 @@
 
 Governance and provenance CLI for Antigravity `.agents/` surface.
 
-[![tests](https://img.shields.io/badge/tests-42%2F42-green)](./tests)
+[![tests](https://img.shields.io/badge/tests-52%2F52-green)](./tests)
 [![version](https://img.shields.io/badge/version-0.1.2-blue)](./package.json)
+[![license](https://img.shields.io/badge/license-MIT-yellow)](./LICENSE)
 
 > **The honesty bound is load-bearing.** ForgeZero never claims to detect
 > what it cannot see. Skills loaded via system-prompt injection leave no
@@ -19,6 +20,7 @@ forge0 selftest         # validate paths and git
 forge0 audit            # diff .agents/ vs HEAD~1
 forge0 provenance <id>  # decision lineage for conversation <id>
 forge0 share --tag v1   # secret-scrubbed bundle for distribution
+forge0 install-hook     # install 3-gate pre-commit audit hook
 ```
 
 ## Commands
@@ -30,6 +32,7 @@ forge0 share --tag v1   # secret-scrubbed bundle for distribution
 | `share --tag <v>` | Secret-scrubbed versioned bundle | 0 = success / 1 = error / 3 = secrets / 4 = skill drift |
 | `sync-skill [--check]` | Push canonical SKILL.md to live agent dir | 0 = synced / 1 = error / 2 = drift (check mode) |
 | `selftest` | Validate paths, git, dependencies | 0 = pass / 1 = some checks failed |
+| `install-hook` | Install production-safe 3-gate pre-commit hook | 0 = success / 1 = error / 2 = already exists |
 | `trace <id>` | [v0.2.0 — not implemented] | 0 (stub) |
 
 ## What ForgeZero will NOT do
@@ -46,4 +49,5 @@ ForgeZero only reads agent-data paths the user already owns under
 
 ## License
 
-MIT
+[MIT](./LICENSE)
+
