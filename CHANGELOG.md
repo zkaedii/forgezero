@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.14] - 2026-04-29
+
+### Fixed
+- Fixed a bug where `forge0 verify` in WSL/bash environments would create a literal file named `nul` (due to `2>nul` redirect), causing the repository to be marked dirty and failing release authorization.
+- `exec` helper now uses proper Node.js `stdio: ['pipe', 'pipe', 'pipe']` to suppress stderr across all OS environments instead of relying on shell redirects.
+
 ## [0.1.13] - 2026-04-29
 
 ### Fixed

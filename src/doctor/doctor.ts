@@ -132,7 +132,7 @@ function diagnoseRelease(repoRoot: string, trust: TrustReport): DoctorFinding[] 
   const head = trust.git.head ?? 'unknown';
 
   // Does the tag exist at all?
-  const tagRef = exec(`git rev-parse --short ${expectedTag} 2>nul`, repoRoot);
+  const tagRef = exec(`git rev-parse --short ${expectedTag}`, repoRoot);
   const tagExists = tagRef !== null && tagRef.length > 0;
 
   if (!tagExists) {
