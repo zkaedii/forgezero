@@ -10,7 +10,7 @@ export { scanFileForSecrets, scanFilesForSecrets, DEFAULT_SECRET_PATTERNS } from
 export { parseSkillFile, extractSkillNameFromPath } from './scanner/skill-parser.js';
 export { parseKIDirectory, scanAllKIs } from './scanner/ki-parser.js';
 export { parseOverview, extractProvenance } from './scanner/brain-parser.js';
-export { getAntigravityDataRoot, getKnowledgePath, getBrainPath, validatePaths } from './paths.js';
+export { getAntigravityDataRoot, getKnowledgePath, getBrainPath, validatePaths, getCanonicalSkillPath } from './paths.js';
 export { getBanner, getCompactHeader } from './ui/banner.js';
 export { fmt, formatChangeType, formatConfidence, sectionHeader } from './ui/format.js';
 export type * from './scanner/types.js';

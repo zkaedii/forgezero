@@ -4,8 +4,12 @@
   "description": "Governance & provenance layer for Antigravity .agents/ extension surface",
   "type": "module",
   "bin": {
-    "forge0": "./dist/bin/forge0.js"
+    "forge0": "dist/bin/forge0.js"
   },
+  "files": [
+    "dist",
+    "docs/skill/SKILL.md"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsx bin/forge0.ts",

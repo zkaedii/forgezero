@@ -21,6 +21,7 @@ import {
   validatePaths,
   checkGitAvailable,
   getAntigravityDataRoot,
+  getCanonicalSkillPath,
   getBanner,
   getCompactHeader,
   fmt,
@@ -204,7 +205,7 @@ program
     console.log(sectionHeader('SHARE — BUNDLE CREATION'));
 
     // Structural enforcement: prevent bundle creation on SKILL.md drift
-    const canonicalSkillPath = resolve(import.meta.dirname, '../docs/skill/SKILL.md');
+    const canonicalSkillPath = getCanonicalSkillPath();
     const liveSkillPath = join(getAntigravityDataRoot(), 'skills', 'forgezero', 'SKILL.md');
     
     if (existsSync(canonicalSkillPath) && existsSync(liveSkillPath)) {
@@ -322,7 +323,7 @@ program
     console.log(sectionHeader('SYNC SKILL'));
     console.log();
 
-    const sourcePath = resolve(import.meta.dirname, '../docs/skill/SKILL.md');
+    const sourcePath = getCanonicalSkillPath();
     const targetDir = join(getAntigravityDataRoot(), 'skills', 'forgezero');
     const targetPath = join(targetDir, 'SKILL.md');
 

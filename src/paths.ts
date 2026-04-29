@@ -71,6 +71,22 @@ export function findAgentsSurface(workspaceRoot: string): string | null {
 }
 
 /**
+ * Get the canonical path to the ForgeZero SKILL.md.
+ * Handles both local checkout (src/...) and global install (dist/...).
+ */
+export function getCanonicalSkillPath(): string {
+  // If running from src/ (dev)
+  const devPath = resolve(import.meta.dirname, '../docs/skill/SKILL.md');
+  if (existsSync(devPath)) return devPath;
+
+  // If running from dist/src/ (prod globally installed)
+  const prodPath = resolve(import.meta.dirname, '../../docs/skill/SKILL.md');
+  if (existsSync(prodPath)) return prodPath;
+
+  return devPath; // Fallback so errors point somewhere plausible
+}
+
+/**
  * Validate that critical ForgeZero paths exist.
  * Returns list of missing paths (empty = all good).
  */
