@@ -68,10 +68,20 @@ function markFirstRunComplete(): void {
 
 // ─── Program Setup ──────────────────────────────────────────────────
 
+// Read version from package.json so CLI --version always matches the release
+const pkgVersion = (() => {
+  try {
+    const pkgPath = new URL('../package.json', import.meta.url);
+    return JSON.parse(readFileSync(pkgPath, 'utf-8')).version ?? '0.0.0';
+  } catch {
+    return '0.0.0';
+  }
+})();
+
 program
   .name('forge0')
   .description('ForgeZero — Governance & Provenance for Antigravity .agents/')
-  .version('0.1.0')
+  .version(pkgVersion)
   .hook('preAction', () => {
     if (process.argv.includes('--json')) return;
 
@@ -444,12 +454,12 @@ tmpdir="\$(mktemp -d "\${TMPDIR:-/tmp}/forge0.XXXXXX")"
 trap 'rm -rf "$tmpdir"' EXIT
 
 run_forge0() {
-  if command -v forge0 >/dev/null 2>&1; then
-    forge0 "$@"
-  elif [ -x ./node_modules/.bin/forge0 ]; then
+  if [ -x ./node_modules/.bin/forge0 ]; then
     ./node_modules/.bin/forge0 "$@"
+  elif command -v forge0 >/dev/null 2>&1; then
+    forge0 "$@"
   else
-    echo "\u2717 forge0 is not available on PATH or in ./node_modules/.bin"
+    echo "\u2717 forge0 is not available in ./node_modules/.bin or on PATH"
     exit 1
   fi
 }

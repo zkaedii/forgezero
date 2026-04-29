@@ -119,7 +119,7 @@ export function buildTrustReport(repoRoot: string): TrustReport {
   let audit: TrustReport['audit'] | undefined;
   if (gitAvailable && agentsPresent) {
     try {
-      const report = runAudit(repoRoot, repoRoot, 1);
+      const report = runAudit(repoRoot, agentsPath, 1);
       const clean = report.entries.length === 0;
       audit = { available: true, clean, totalChanges: report.totalChanges, scope: '.agents' };
       if (!clean) {

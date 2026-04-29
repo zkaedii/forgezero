@@ -321,8 +321,30 @@ function diagnoseHook(repoRoot: string, trust: TrustReport): DoctorFinding[] {
     });
   }
 
+  // Check binary resolution order: local-first is production-safe
+  // If hook checks `command -v forge0` before `./node_modules/.bin/forge0`,
+  // a stale or broken global install can block valid commits.
+  const commandVIdx = hookContent.indexOf('command -v forge0');
+  const localBinIdx = hookContent.indexOf('./node_modules/.bin/forge0');
+  if (commandVIdx !== -1 && localBinIdx !== -1 && commandVIdx < localBinIdx) {
+    findings.push({
+      id: 'HOOK_GLOBAL_FIRST',
+      severity: 'medium',
+      title: 'Pre-commit hook prefers global forge0 before local node_modules binary',
+      evidence: [
+        'run_forge0() checks `command -v forge0` before `./node_modules/.bin/forge0`',
+        'A stale global install can block valid commits even when the local version is correct',
+      ],
+      explanation:
+        'The production hook must check ./node_modules/.bin/forge0 first so that the repo-local version is always preferred. Global binary is the fallback, not the default.',
+      recommendedCommands: ['forge0 install-hook --force'],
+      safeToAutoFix: false,
+    });
+  }
+
   return findings;
 }
+
 
 // ─── Summarizer ─────────────────────────────────────────────────────
 

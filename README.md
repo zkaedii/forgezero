@@ -2,8 +2,8 @@
 
 Governance and provenance CLI for Antigravity `.agents/` surface.
 
-[![tests](https://img.shields.io/badge/tests-52%2F52-green)](./tests)
-[![version](https://img.shields.io/badge/version-0.1.2-blue)](./package.json)
+[![tests](https://img.shields.io/badge/tests-87%2F87-green)](./tests)
+[![version](https://img.shields.io/badge/version-0.1.4-blue)](./package.json)
 [![license](https://img.shields.io/badge/license-MIT-yellow)](./LICENSE)
 
 > **The honesty bound is load-bearing.** ForgeZero never claims to detect
@@ -21,6 +21,9 @@ forge0 audit            # diff .agents/ vs HEAD~1
 forge0 provenance <id>  # decision lineage for conversation <id>
 forge0 share --tag v1   # secret-scrubbed bundle for distribution
 forge0 install-hook     # install 3-gate pre-commit audit hook
+forge0 status           # trust posture at a glance
+forge0 doctor           # diagnose drift and release hazards
+forge0 receipt          # generate a release attestation
 ```
 
 ## Commands
@@ -33,6 +36,9 @@ forge0 install-hook     # install 3-gate pre-commit audit hook
 | `sync-skill [--check]` | Push canonical SKILL.md to live agent dir | 0 = synced / 1 = error / 2 = drift (check mode) |
 | `selftest` | Validate paths, git, dependencies | 0 = pass / 1 = some checks failed |
 | `install-hook` | Install production-safe 3-gate pre-commit hook | 0 = success / 1 = error / 2 = already exists |
+| `status` | Trust posture at a glance | 0 = success |
+| `doctor` | Diagnose workspace, release, and hook state | 0 = success |
+| `receipt` | Generate a release attestation with honesty bound | 0 = success |
 | `trace <id>` | [v0.2.0 — not implemented] | 0 (stub) |
 
 ## What ForgeZero will NOT do

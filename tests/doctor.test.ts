@@ -89,7 +89,7 @@ describe('runDoctor mode filtering', () => {
     const report = runDoctor(REPO_ROOT, 'hook');
     expect(report.mode).toBe('hook');
     for (const f of report.findings) {
-      expect(['HOOK_ABSENT', 'HOOK_WEAK']).toContain(f.id);
+      expect(['HOOK_ABSENT', 'HOOK_WEAK', 'HOOK_GLOBAL_FIRST']).toContain(f.id);
     }
   });
 

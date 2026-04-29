@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.4] - 2026-04-29
+
+### Added
+- `forge0 status` — trust posture at a glance backed by shared `TrustReport` model.
+- `forge0 doctor` — recovery intelligence engine with named diagnoses, evidence chains, and exact recovery commands (workspace, release, hook modes).
+- `forge0 receipt` — local release attestation from `TrustReport` + `DoctorReport` with paste-ready suggested release note.
+- `HOOK_GLOBAL_FIRST` diagnosis in `forge0 doctor --mode hook` to detect hooks that prefer global binary before local `node_modules/.bin/forge0`.
+- `src/trust/types.ts`, `src/doctor/types.ts`, `src/receipt/types.ts` — shared type primitives for the trust spine.
+
+### Fixed
+- CLI `--version` flag now reads version from `package.json` at runtime instead of being hardcoded to `0.1.0`.
+- `forge0 status` audit now correctly scopes to `.agents/` path, not the entire repo root.
+- Generated `forge0 install-hook` shell script now prefers local `./node_modules/.bin/forge0` before falling back to global `forge0`.
+
+### Architecture
+The observe → recover → attest triangle is complete:
+- `status` (observe) → `doctor` (recover) → `receipt` (attest)
+
 ## [0.1.2] - 2026-04-29
 
 ### Added

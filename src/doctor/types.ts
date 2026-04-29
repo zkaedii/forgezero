@@ -14,6 +14,7 @@ export type DoctorDiagnosisId =
   | 'CHANGELOG_MISSING_VERSION'
   | 'HOOK_ABSENT'
   | 'HOOK_WEAK'
+  | 'HOOK_GLOBAL_FIRST'
   | 'NO_GIT'
   | 'RELEASE_READY';
 
