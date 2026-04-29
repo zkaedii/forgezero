@@ -18,3 +18,5 @@ export { buildTrustReport } from './trust/status.js';
 export type { TrustReport, TrustPosture, TrustSignal, TrustSignalLevel, HonestyBound } from './trust/types.js';
 export { runDoctor } from './doctor/doctor.js';
 export type { DoctorReport, DoctorFinding, DoctorDiagnosisId, DoctorMode, DoctorSummary } from './doctor/types.js';
+export { buildReleaseReceipt } from './receipt/receipt.js';
+export type { ReleaseReceipt, ReceiptCheck } from './receipt/types.js';

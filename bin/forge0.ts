@@ -19,6 +19,7 @@ import { resolve, join } from 'node:path';
 import {
   buildTrustReport,
   runDoctor,
+  buildReleaseReceipt,
   runAudit,
   runProvenance,
   createBundle,
@@ -581,6 +582,73 @@ program
       console.log(fmt.dim(`    ✓ ${v}`));
     }
     for (const n of report.honesty.notObservable) {
+      console.log(fmt.dim(`    ⚠ (not observable) ${n}`));
+    }
+
+    process.exit(0);
+  });
+
+// ─── forge0 receipt ─────────────────────────────────────────────────
+
+program
+  .command('receipt')
+  .description('Generate a local release receipt with trust posture and honesty bound')
+  .option('--json', 'Emit JSON instead of formatted text')
+  .action((opts) => {
+    const receipt = buildReleaseReceipt(process.cwd());
+
+    if (opts.json) {
+      process.stdout.write(JSON.stringify(receipt, null, 2) + '\n');
+      process.exit(0);
+    }
+
+    console.log(sectionHeader('FORGEZERO RELEASE RECEIPT'));
+    console.log();
+
+    const row = (label: string, value: string) =>
+      console.log(`  ${fmt.dim(label.padEnd(16))} ${value}`);
+
+    row('Version:', receipt.version ? fmt.bold(receipt.version) : fmt.dim('unknown'));
+    row('Branch:', fmt.dim(receipt.branch ?? 'unknown'));
+    row('Commit:', fmt.dim(receipt.head ?? 'unknown'));
+    row('Expected tag:', receipt.expectedTag ? fmt.cyan(receipt.expectedTag) : fmt.dim('none'));
+    row('Tags at HEAD:', receipt.tagsAtHead.length > 0 ? fmt.cyan(receipt.tagsAtHead.join(', ')) : fmt.dim('none'));
+    row('Git:', receipt.gitClean ? fmt.green('clean') : fmt.redBold('dirty'));
+    row('Trust posture:', receipt.trustPosture === 'RELEASABLE' ? fmt.green(receipt.trustPosture) : fmt.yellow(receipt.trustPosture));
+    row('Doctor:', receipt.doctor.blockingFindings.length === 0 ? fmt.green('0 blocking finding(s)') : fmt.redBold(`${receipt.doctor.blockingFindings.length} blocking finding(s)`));
+
+    // Checks
+    console.log();
+    console.log(fmt.bold('  Checks:'));
+    for (const check of receipt.checks) {
+      const icon = check.passed ? fmt.green('✓') : fmt.redBold('✗');
+      console.log(`  ${icon} ${check.label}`);
+    }
+
+    // Blocking findings
+    if (receipt.doctor.blockingFindings.length > 0) {
+      console.log();
+      console.log(fmt.bold('  Blocking findings:'));
+      for (const f of receipt.doctor.blockingFindings) {
+        console.log(`  ${fmt.redBold('✗')} ${f}`);
+      }
+    }
+
+    // Suggested release note
+    console.log();
+    console.log(fmt.bold('  Suggested release note:'));
+    console.log();
+    for (const line of receipt.suggestedReleaseNote.split('\n')) {
+      console.log(fmt.dim(`  ${line}`));
+    }
+
+    // Honesty bound
+    console.log();
+    console.log(fmt.dim('  Honesty bound:'));
+    for (const v of receipt.honesty.verified) {
+      console.log(fmt.dim(`    ✓ ${v}`));
+    }
+    for (const n of receipt.honesty.notObservable) {
       console.log(fmt.dim(`    ⚠ (not observable) ${n}`));
     }
 
