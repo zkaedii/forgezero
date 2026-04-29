@@ -277,6 +277,18 @@ describe('ledger record events — isolated', () => {
 
 // ─── CLI JSON Tests ─────────────────────────────────────────────────
 
+function execCliAllowFailure(command: string, cwd = process.cwd()): string {
+  try {
+    return execSync(command, {
+      cwd,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+  } catch (err: any) {
+    return err.stdout?.toString() ?? '';
+  }
+}
+
 describe('ledger CLI JSON', () => {
   it('CLI ledger verify --json emits valid JSON', () => {
     const out = execSync('npx tsx bin/forge0.ts ledger verify --json', { encoding: 'utf-8' });
@@ -291,8 +303,23 @@ describe('ledger CLI JSON', () => {
   });
 
   it('CLI ledger last --json always starts with {', () => {
-    const out = execSync('npx tsx bin/forge0.ts ledger last --json', { encoding: 'utf-8' });
-    expect(out.trim().startsWith('{')).toBe(true);
+    const emptyDir = mkdtempSync(join(tmpdir(), 'forge0-ledger-empty-'));
+
+    try {
+      const out = execCliAllowFailure(
+        `npx tsx ${join(process.cwd(), 'bin/forge0.ts')} ledger last --json`,
+        emptyDir
+      );
+
+      const parsed = JSON.parse(out);
+      expect(out.trim().startsWith('{')).toBe(true);
+      expect(parsed).toEqual({
+        found: false,
+        entry: null,
+      });
+    } finally {
+      rmSync(emptyDir, { recursive: true, force: true });
+    }
   });
 
   it('CLI ledger last --json has found field even if empty', () => {

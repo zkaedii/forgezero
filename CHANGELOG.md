@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.13] - 2026-04-29
+
+### Fixed
+- Fixed `ledger last --json` CLI test to validate empty-ledger JSON output even when the command exits with code 2.
+- Kept ledger CLI JSON tests deterministic by running empty-ledger assertions in an isolated temp directory.
+
 ## [0.1.12] - 2026-04-29
 
 ### Fixed
