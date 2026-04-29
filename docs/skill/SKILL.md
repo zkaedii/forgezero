@@ -33,10 +33,10 @@ Trigger when:
 
 Run: `forge0 share --tag <semver>`
 Default scrubs secrets. Refuses with exit 3 if any detected.
-Refuses with exit 4 if live SKILL.md drifted from repo.
+Refuses with exit 4 if live SKILL.md drifted from repo. On exit 4, surface the drift to the user and ask whether to run `forge0 sync-skill` or pass `--allow-skill-drift`. Do not auto-resolve.
 NEVER suggest `--allow-secrets` or `--allow-skill-drift` unprompted.
 
 ## Hard prohibitions
-- Do not invent flags. The four real subcommands are: audit, provenance, share, selftest.
+- Do not invent flags. The five real subcommands are: audit, provenance, share, selftest, sync-skill.
 - Do not promise detection completeness. The honesty bound is load-bearing.
 - Do not run `share` without explicit user request — bundle creation is destructive-feeling for users who don't expect it.
