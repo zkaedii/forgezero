@@ -70,12 +70,21 @@ function markFirstRunComplete(): void {
 
 // Read version from package.json so CLI --version always matches the release
 const pkgVersion = (() => {
-  try {
-    const pkgPath = new URL('../package.json', import.meta.url);
-    return JSON.parse(readFileSync(pkgPath, 'utf-8')).version ?? '0.0.0';
-  } catch {
-    return '0.0.0';
+  const tryPaths = [
+    new URL('../package.json', import.meta.url),
+    new URL('../../package.json', import.meta.url),
+  ];
+
+  for (const pkgPath of tryPaths) {
+    try {
+      if (existsSync(pkgPath)) {
+        return JSON.parse(readFileSync(pkgPath, 'utf-8')).version ?? '0.0.0';
+      }
+    } catch {
+      // Continue to next path
+    }
   }
+  return '0.0.0';
 })();
 
 program
@@ -86,10 +95,10 @@ program
     if (process.argv.includes('--json')) return;
 
     if (isFirstRun()) {
-      console.log(getBanner());
+      console.log(getBanner(pkgVersion));
       markFirstRunComplete();
     } else {
-      console.log(getCompactHeader());
+      console.log(getCompactHeader(pkgVersion));
     }
     console.log();
   });
