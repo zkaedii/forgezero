@@ -10,7 +10,8 @@
  *   - write_to_file calls → artifact production
  */
 
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { getKnowledgePath } from '../paths.js';
 import type {
   OverviewStep,
   ProvenanceSkillRef,
@@ -62,6 +63,22 @@ export function extractProvenance(
   conversationId: string,
   steps: OverviewStep[],
 ): ProvenanceReport {
+  // HYGIENE-FORGE-001: Valid KI slugs from disk to prevent false-positives
+  const validKIs = new Set<string>();
+  const knowledgeDir = getKnowledgePath();
+  if (existsSync(knowledgeDir)) {
+    try {
+      const entries = readdirSync(knowledgeDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.isDirectory()) {
+          validKIs.add(entry.name);
+        }
+      }
+    } catch {
+      // Ignore read errors
+    }
+  }
+
   const skillsLoaded: ProvenanceSkillRef[] = [];
   const kisReferenced: ProvenanceKIRef[] = [];
   const artifactsProduced: ProvenanceArtifactRef[] = [];
@@ -98,8 +115,7 @@ export function extractProvenance(
       const kiMatch = argsStr.match(KI_PATH_REGEX);
       if (kiMatch) {
         const kiSlug = kiMatch[1];
-        // Skip the generic "artifacts" subdirectory — it's not a KI slug
-        if (kiSlug !== 'artifacts' && !seenKIs.has(kiSlug)) {
+        if (validKIs.has(kiSlug) && !seenKIs.has(kiSlug)) {
           seenKIs.add(kiSlug);
           kisReferenced.push({
             kiSlug,

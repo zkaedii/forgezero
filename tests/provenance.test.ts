@@ -7,9 +7,24 @@
  *   - 1 artifact write (D:\project\src\main.ts)
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { resolve } from 'node:path';
 import { parseOverview, extractProvenance } from '../src/scanner/brain-parser.js';
+
+vi.mock('node:fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs')>();
+  return {
+    ...actual,
+    readdirSync: (path: import('node:fs').PathLike, options: any) => {
+      if (typeof path === 'string' && path.includes('knowledge')) {
+        return [
+          { name: 'test_ki', isDirectory: () => true },
+        ];
+      }
+      return actual.readdirSync(path, options);
+    }
+  };
+});
 
 const FIXTURES = resolve(import.meta.dirname, 'fixtures');
 const OVERVIEW_PATH = resolve(FIXTURES, 'sample-overview.jsonl');
