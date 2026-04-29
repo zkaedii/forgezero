@@ -22,6 +22,7 @@ import {
   buildReleaseReceipt,
   runAudit,
   runProvenance,
+  runVerify,
   createBundle,
   validatePaths,
   checkGitAvailable,
@@ -672,6 +673,48 @@ program
     }
 
     process.exit(0);
+  });
+
+// ─── forge0 verify ──────────────────────────────────────────────────
+program
+  .command('verify')
+  .description('Enforce trust criteria — precommit, release, or bundle modes')
+  .option('-m, --mode <mode>', 'Verification mode (precommit|release|bundle)', 'release')
+  .option('--json', 'Emit JSON instead of formatted text')
+  .action((opts) => {
+    const mode = opts.mode as any;
+    const report = runVerify(process.cwd(), mode, pkgVersion);
+
+    if (opts.json) {
+      process.stdout.write(JSON.stringify(report, null, 2) + '\n');
+      process.exit(report.passed ? 0 : 1);
+    }
+
+    console.log(sectionHeader(`VERIFY: ${mode.toUpperCase()}`));
+    console.log();
+
+    const statusIcon = report.passed ? fmt.green('PASSED') : fmt.redBold('FAILED');
+    console.log(`  ${fmt.bold('Status:')} ${statusIcon} (${report.score}%)`);
+    console.log(`  ${fmt.dim(report.summary)}`);
+    console.log();
+
+    for (const check of report.checks) {
+      const icon = check.passed ? fmt.green('✓') : check.severity === 'critical' ? fmt.redBold('✗') : fmt.red('✗');
+      const label = check.passed ? fmt.dim(check.label) : fmt.bold(check.label);
+      console.log(`  ${icon} ${label}`);
+      if (!check.passed) {
+        console.log(`    ${fmt.red(check.detail)}`);
+      }
+    }
+
+    console.log();
+    if (report.passed) {
+      console.log(fmt.green(`  ✓ Repository is authorized for ${mode}.`));
+    } else {
+      console.log(fmt.redBold(`  ✗ Repository is NOT authorized for ${mode}.`));
+    }
+
+    process.exit(report.passed ? 0 : 1);
   });
 
 // ─── forge0 status ──────────────────────────────────────────────────

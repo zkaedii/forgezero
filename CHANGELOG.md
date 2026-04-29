@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.6] - 2026-04-29
+
+### Added
+- `forge0 verify` — the enforcement layer. Supports `release`, `precommit`, and `bundle` modes. Exits with non-zero on failure to block unsafe operations.
+- `VerifyResult` and `VerifyMode` types for structured enforcement reports.
+
+## [0.1.5] - 2026-04-29
+
+### Fixed
+- Version drift in `getBanner()` and `getCompactHeader()` — now dynamically reads from `package.json`.
+- `pkgVersion` resolution in `bin/forge0.ts` now searches parent/grandparent paths to support both source and `dist` execution.
+- Global installation repair — global binary now correctly resolves to `dist/bin/forge0.js`.
+
 ## [0.1.4] - 2026-04-29
 
 ### Added
