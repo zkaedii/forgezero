@@ -16,3 +16,5 @@ export { fmt, formatChangeType, formatConfidence, sectionHeader } from './ui/for
 export type * from './scanner/types.js';
 export { buildTrustReport } from './trust/status.js';
 export type { TrustReport, TrustPosture, TrustSignal, TrustSignalLevel, HonestyBound } from './trust/types.js';
+export { runDoctor } from './doctor/doctor.js';
+export type { DoctorReport, DoctorFinding, DoctorDiagnosisId, DoctorMode, DoctorSummary } from './doctor/types.js';

@@ -18,6 +18,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import {
   buildTrustReport,
+  runDoctor,
   runAudit,
   runProvenance,
   createBundle,
@@ -493,6 +494,97 @@ exit 0
     console.log(fmt.green('  ✓ Installed pre-commit hook.'));
     console.log(fmt.dim(`    ${hookPath}`));
     console.log(fmt.dim('    The hook will block commits with .agents/ changes until reviewed.'));
+  });
+
+// ─── forge0 doctor ──────────────────────────────────────────────────
+
+program
+  .command('doctor')
+  .description('Diagnose drift, release hazards, hook problems, and trust posture regressions')
+  .option('--json', 'Emit JSON instead of formatted text')
+  .option('--mode <mode>', 'Focus: all, workspace, release, hook', 'all')
+  .action((opts) => {
+    const validModes = ['all', 'workspace', 'release', 'hook'] as const;
+    const mode = validModes.includes(opts.mode) ? opts.mode : 'all';
+    const report = runDoctor(process.cwd(), mode);
+
+    if (opts.json) {
+      process.stdout.write(JSON.stringify(report, null, 2) + '\n');
+      process.exit(0);
+    }
+
+    console.log(sectionHeader('FORGEZERO DOCTOR'));
+    console.log();
+    console.log(`  ${fmt.bold('Trust posture:')} ${report.trustPosture}`);
+    console.log(`  ${fmt.bold('Mode:')}           ${report.mode}`);
+
+    const actionable = report.findings.filter((f) => f.severity !== 'info');
+    const infoFindings = report.findings.filter((f) => f.severity === 'info');
+
+    if (actionable.length === 0 && infoFindings.length === 0) {
+      console.log();
+      console.log(fmt.green('  ✓ No findings. Repository is healthy.'));
+    }
+
+    // Show actionable findings first
+    if (actionable.length > 0) {
+      console.log();
+      console.log(fmt.bold(`  ${actionable.length} finding(s):`));
+      for (const f of actionable) {
+        console.log();
+        const icon =
+          f.severity === 'critical' || f.severity === 'high'
+            ? fmt.redBold('✗')
+            : f.severity === 'medium'
+              ? fmt.yellow('⚠')
+              : fmt.dim('○');
+        const sev =
+          f.severity === 'critical' || f.severity === 'high'
+            ? fmt.redBold(f.severity.toUpperCase())
+            : f.severity === 'medium'
+              ? fmt.yellow(f.severity.toUpperCase())
+              : fmt.dim(f.severity.toUpperCase());
+        console.log(`  ${icon} ${sev} ${f.title}`);
+        for (const e of f.evidence) {
+          console.log(fmt.dim(`    ${e}`));
+        }
+        if (f.explanation) {
+          console.log();
+          console.log(fmt.dim(`    ${f.explanation}`));
+        }
+        if (f.recommendedCommands.length > 0) {
+          console.log();
+          console.log(fmt.dim('    Fix:'));
+          for (const cmd of f.recommendedCommands) {
+            console.log(`      ${fmt.cyan(cmd)}`);
+          }
+        }
+      }
+    }
+
+    // Show info findings concisely
+    if (infoFindings.length > 0) {
+      console.log();
+      for (const f of infoFindings) {
+        console.log(`  ${fmt.green('✓')} ${fmt.dim(f.title)}`);
+      }
+    }
+
+    // Summary
+    console.log();
+    console.log(fmt.dim(`  Next: ${report.summary.recommendedNextAction}`));
+
+    // Honesty bound
+    console.log();
+    console.log(fmt.dim('  Honesty bound:'));
+    for (const v of report.honesty.verified) {
+      console.log(fmt.dim(`    ✓ ${v}`));
+    }
+    for (const n of report.honesty.notObservable) {
+      console.log(fmt.dim(`    ⚠ (not observable) ${n}`));
+    }
+
+    process.exit(0);
   });
 
 // ─── forge0 status ──────────────────────────────────────────────────
