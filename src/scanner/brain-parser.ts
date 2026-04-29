@@ -62,20 +62,28 @@ const KI_PATH_REGEX = /knowledge[/\\]{1,4}([a-zA-Z0-9_-]+)/i;
 export function extractProvenance(
   conversationId: string,
   steps: OverviewStep[],
+  validKIsOverride?: Set<string>,
 ): ProvenanceReport {
-  // HYGIENE-FORGE-001: Valid KI slugs from disk to prevent false-positives
-  const validKIs = new Set<string>();
-  const knowledgeDir = getKnowledgePath();
-  if (existsSync(knowledgeDir)) {
-    try {
-      const entries = readdirSync(knowledgeDir, { withFileTypes: true });
-      for (const entry of entries) {
-        if (entry.isDirectory()) {
-          validKIs.add(entry.name);
+  // HYGIENE-FORGE-001: Valid KI slugs from disk to prevent false-positives.
+  // Tests inject validKIsOverride to avoid host-filesystem dependency
+  // (HYGIENE-FORGE-007: CI runners don't have ~/.gemini/antigravity/knowledge/).
+  let validKIs: Set<string>;
+  if (validKIsOverride) {
+    validKIs = validKIsOverride;
+  } else {
+    validKIs = new Set<string>();
+    const knowledgeDir = getKnowledgePath();
+    if (existsSync(knowledgeDir)) {
+      try {
+        const entries = readdirSync(knowledgeDir, { withFileTypes: true });
+        for (const entry of entries) {
+          if (entry.isDirectory()) {
+            validKIs.add(entry.name);
+          }
         }
+      } catch {
+        // Ignore read errors
       }
-    } catch {
-      // Ignore read errors
     }
   }
 

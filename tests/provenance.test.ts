@@ -62,7 +62,8 @@ describe('Provenance Extraction', () => {
 
   it('detects KI references from path segments', () => {
     const steps = parseOverview(OVERVIEW_PATH);
-    const report = extractProvenance('test-conv-id', steps);
+    // HYGIENE-FORGE-007: inject test KI set to avoid CI host-filesystem dependency
+    const report = extractProvenance('test-conv-id', steps, new Set(['test_ki']));
 
     expect(report.kisReferenced).toHaveLength(1);
     expect(report.kisReferenced[0].kiSlug).toBe('test_ki');
