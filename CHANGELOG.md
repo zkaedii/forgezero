@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.7] - 2026-04-29
+
+### Added
+- `forge0 ledger` command group for durable local trust memory.
+- Hash-chained JSONL ledger at `.forge0/ledger.jsonl`.
+- `forge0 ledger record --event verify --mode release`.
+- `forge0 ledger record --event receipt`.
+- `forge0 ledger list`, `ledger last`, and `ledger verify`.
+- Ledger JSON output for machine-readable history and integrity checks.
+
+### Security
+- Ledger entries include SHA-256 hash chaining for tamper-evident local history.
+- Ledger honesty bounds explicitly state local-only verification limits.
+
+### Changed
+- ForgeZero lifecycle now extends to `status → doctor → verify → receipt → ledger`.
+
 ## [0.1.6] - 2026-04-29
 
 ### Added

@@ -2,13 +2,15 @@
 
 Governance and provenance CLI for Antigravity `.agents/` surface.
 
-[![tests](https://img.shields.io/badge/tests-89%2F89-green)](./tests)
-[![version](https://img.shields.io/badge/version-0.1.6-blue)](./package.json)
+[![tests](https://img.shields.io/badge/tests-103%2F103-green)](./tests)
+[![version](https://img.shields.io/badge/version-0.1.7-blue)](./package.json)
 [![license](https://img.shields.io/badge/license-MIT-yellow)](./LICENSE)
 
 > **The honesty bound is load-bearing.** ForgeZero never claims to detect
 > everything. It explicitly defines what it can prove, what it cannot,
 > and where the boundary between "verified" and "not observable" lies.
+
+> **Velocity without amnesia.** ForgeZero ledger gives high-velocity development a memory: local, append-only, hash-chained, and honesty-bound.
 
 ## Quickstart
 
@@ -23,6 +25,7 @@ forge0 status           # trust posture at a glance
 forge0 doctor           # diagnose drift and release hazards
 forge0 verify           # enforce trust criteria for release
 forge0 receipt          # generate a release attestation
+forge0 ledger record --event verify --mode release # record trust event
 ```
 
 ## Commands
@@ -39,7 +42,24 @@ forge0 receipt          # generate a release attestation
 | `doctor` | Diagnose workspace, release, and hook state | 0 = success |
 | `verify [--mode m]` | Enforce criteria for precommit/release/bundle | 0 = pass / 1 = blocking failure |
 | `receipt` | Generate a release attestation with honesty bound | 0 = success |
+| `ledger record` | Record a hash-chained trust event | 0 = success |
+| `ledger list` | Show recorded trust events | 0 = success |
+| `ledger last` | Show the latest trust event | 0 = success |
+| `ledger verify` | Verify ledger hash-chain integrity | 0 = pass / 1 = fail |
 | `trace <id>` | [v0.2.0 — not implemented] | 0 (stub) |
+
+## Lifecycle
+
+```text
+status → doctor → verify → receipt → ledger
+observe → recover → enforce → attest → remember
+```
+
+## Honesty Note
+
+The ledger records local ForgeZero observations. It is tamper-evident, not tamper-proof.
+It does not prove remote CI completion, downstream tag consumption, hidden model context,
+or runtime agent behavior.
 
 ## What ForgeZero will NOT do
 

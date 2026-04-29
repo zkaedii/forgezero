@@ -30,6 +30,12 @@ import {
   getCanonicalSkillPath,
   getBanner,
   getCompactHeader,
+  getLedgerPath,
+  readLedger,
+  verifyLedger,
+  getLastLedgerEntry,
+  recordVerifyEvent,
+  recordReceiptEvent,
   fmt,
   sectionHeader,
   formatChangeType,
@@ -673,6 +679,155 @@ program
     }
 
     process.exit(0);
+  });
+
+// ─── forge0 ledger ──────────────────────────────────────────────────
+const ledger = program
+  .command('ledger')
+  .description('Durable trust memory — record, list, last, verify');
+
+ledger
+  .command('record')
+  .description('Record a trust event to the ledger')
+  .requiredOption('-e, --event <event>', 'Event kind (verify|receipt)')
+  .option('-m, --mode <mode>', 'Mode (for verify event)', 'release')
+  .action((opts) => {
+    const repoRoot = process.cwd();
+    let entry;
+
+    if (opts.event === 'verify') {
+      entry = recordVerifyEvent(repoRoot, opts.mode as any);
+    } else if (opts.event === 'receipt') {
+      entry = recordReceiptEvent(repoRoot);
+    } else {
+      console.error(fmt.redBold(`\u2717 Unknown event kind: ${opts.event}`));
+      process.exit(1);
+    }
+
+    console.log(sectionHeader('FORGEZERO LEDGER'));
+    console.log();
+    console.log(`${fmt.green('\u2713')} Recorded ${opts.event} event`);
+    console.log();
+    console.log(`  ${fmt.dim('ID:')}       ${entry.id}`);
+    console.log(`  ${fmt.dim('Seq:')}      ${entry.sequence}`);
+    console.log(`  ${fmt.dim('Event:')}    ${entry.event}`);
+    if (entry.mode) console.log(`  ${fmt.dim('Mode:')}     ${entry.mode}`);
+    console.log(`  ${fmt.dim('Result:')}   ${entry.result === 'pass' ? fmt.green(entry.result) : fmt.redBold(entry.result)}`);
+    console.log(`  ${fmt.dim('Commit:')}   ${fmt.dim(entry.repo.head?.slice(0, 7) ?? 'unknown')}`);
+    console.log(`  ${fmt.dim('Version:')}  ${entry.version?.package ?? 'unknown'}`);
+    console.log(`  ${fmt.dim('Hash:')}     ${fmt.dim(entry.hash.current.slice(0, 8))}...`);
+    console.log();
+    console.log(`  ${fmt.dim('Ledger:')}`);
+    console.log(`    ${getLedgerPath(repoRoot)}`);
+  });
+
+ledger
+  .command('list')
+  .description('List ledger entries')
+  .option('--json', 'Emit JSON instead of formatted text')
+  .action((opts) => {
+    const repoRoot = process.cwd();
+    const entries = readLedger(repoRoot);
+
+    if (opts.json) {
+      process.stdout.write(JSON.stringify({ path: getLedgerPath(repoRoot), entries }, null, 2) + '\n');
+      process.exit(0);
+    }
+
+    console.log(sectionHeader('FORGEZERO LEDGER'));
+    console.log();
+    console.log(`  ${fmt.dim('Path:')} ${getLedgerPath(repoRoot)}`);
+    console.log(`  ${fmt.dim('Entries:')} ${entries.length}`);
+    console.log();
+
+    if (entries.length === 0) {
+      console.log(fmt.dim('  (Empty ledger)'));
+      process.exit(0);
+    }
+
+    console.log(`  ${fmt.dim('Seq  Result  Event    Mode      Version  Commit   Time')}`);
+    for (const e of entries) {
+      const res = e.result === 'pass' ? fmt.green('pass') : fmt.redBold(e.result.padEnd(4));
+      const event = e.event.padEnd(8);
+      const mode = (e.mode ?? '-').padEnd(8);
+      const ver = (e.version?.package ?? 'unknown').padEnd(8);
+      const commit = (e.repo.head?.slice(0, 7) ?? 'unknown').padEnd(8);
+      const time = e.timestamp.split('T')[0];
+      console.log(`  ${String(e.sequence).padEnd(3)}  ${res}    ${event} ${mode}  ${ver} ${commit} ${time}`);
+    }
+  });
+
+ledger
+  .command('last')
+  .description('Show the latest ledger entry')
+  .option('--json', 'Emit JSON instead of formatted text')
+  .action((opts) => {
+    const repoRoot = process.cwd();
+    const entry = getLastLedgerEntry(repoRoot);
+
+    if (opts.json) {
+      process.stdout.write(JSON.stringify(entry, null, 2) + '\n');
+      process.exit(entry ? 0 : 2);
+    }
+
+    if (!entry) {
+      console.log(fmt.dim('No ledger entries found.'));
+      process.exit(0);
+    }
+
+    console.log(sectionHeader('FORGEZERO LEDGER \u2014 LAST ENTRY'));
+    console.log();
+    console.log(`  ${fmt.dim('ID:')}       ${entry.id}`);
+    console.log(`  ${fmt.dim('Seq:')}      ${entry.sequence}`);
+    console.log(`  ${fmt.dim('Event:')}    ${entry.event}`);
+    if (entry.mode) console.log(`  ${fmt.dim('Mode:')}     ${entry.mode}`);
+    console.log(`  ${fmt.dim('Result:')}   ${entry.result === 'pass' ? fmt.green(entry.result) : fmt.redBold(entry.result)}`);
+    console.log(`  ${fmt.dim('Commit:')}   ${fmt.dim(entry.repo.head ?? 'unknown')}`);
+    console.log(`  ${fmt.dim('Version:')}  ${entry.version?.package ?? 'unknown'}`);
+    console.log();
+
+    console.log(`  ${fmt.bold('Checks:')}`);
+    for (const c of entry.checks) {
+      const icon = c.passed ? fmt.green('\u2713') : fmt.redBold('\u2717');
+      console.log(`    ${icon} ${c.label}`);
+    }
+
+    console.log();
+    console.log(`  ${fmt.dim('Honesty bound:')}`);
+    for (const v of entry.honesty.verified) {
+      console.log(`    ${fmt.green('\u2713')} ${fmt.dim(v)}`);
+    }
+    for (const n of entry.honesty.notObservable) {
+      console.log(`    ${fmt.yellow('\u26a0')} ${fmt.dim(`(not observable) ${n}`)}`);
+    }
+  });
+
+ledger
+  .command('verify')
+  .description('Verify ledger hash-chain integrity')
+  .option('--json', 'Emit JSON instead of formatted text')
+  .action((opts) => {
+    const repoRoot = process.cwd();
+    const result = verifyLedger(repoRoot);
+
+    if (opts.json) {
+      process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+      process.exit(result.ok ? 0 : 1);
+    }
+
+    console.log(sectionHeader('FORGEZERO LEDGER VERIFY'));
+    console.log();
+
+    if (result.ok) {
+      console.log(`  ${fmt.green('\u2713')} Ledger hash chain intact`);
+      console.log(`  ${fmt.dim('Entries:')} ${result.entryCount}`);
+      console.log(`  ${fmt.dim('Head hash:')} ${fmt.dim(result.headHash ?? 'n/a')}`);
+    } else {
+      console.log(`  ${fmt.redBold('\u2717')} Ledger hash chain broken`);
+      console.log(`  ${fmt.dim('Broken at sequence:')} ${result.brokenAt}`);
+      console.log(`  ${fmt.dim('Reason:')} ${fmt.redBold(result.reason ?? 'unknown')}`);
+      process.exit(1);
+    }
   });
 
 // ─── forge0 verify ──────────────────────────────────────────────────
