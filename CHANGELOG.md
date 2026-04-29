@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.11] - 2026-04-29
+
+### Added
+- CI-aware release verification via `verify --ci`.
+- Added `--ci` flag to `forge0 ledger record --event verify`.
+
+### Security
+- Explicit CI verification fails closed when CI status cannot be observed (e.g. `gh` CLI missing or unauthenticated).
+
 ## [0.1.10] - 2026-04-29
 
 ### Fixed

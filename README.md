@@ -3,7 +3,7 @@
 Governance and provenance CLI for Antigravity `.agents/` surface.
 
 [![tests](https://img.shields.io/badge/tests-116%2F116-green)](./tests)
-[![version](https://img.shields.io/badge/version-0.1.10-blue)](./package.json)
+[![version](https://img.shields.io/badge/version-0.1.11-blue)](./package.json)
 [![license](https://img.shields.io/badge/license-MIT-yellow)](./LICENSE)
 
 > **The honesty bound is load-bearing.** ForgeZero never claims to detect
@@ -40,7 +40,7 @@ forge0 ledger record --event verify --mode release --remote # record trust event
 | `install-hook` | Install production-safe 3-gate pre-commit hook | 0 = success / 1 = error / 2 = already exists |
 | `status` | Trust posture at a glance | 0 = success |
 | `doctor` | Diagnose workspace, release, and hook state | 0 = success |
-| `verify [--mode m] [--remote]` | Enforce criteria for precommit/release/bundle | 0 = pass / 1 = blocking failure |
+| `verify [--mode m] [--remote] [--ci]` | Enforce criteria for precommit/release/bundle | 0 = pass / 1 = blocking failure |
 | `receipt` | Generate a release attestation with honesty bound | 0 = success |
 | `ledger record` | Record a hash-chained trust event | 0 = success |
 | `ledger list` | Show recorded trust events | 0 = success |
@@ -56,6 +56,8 @@ observe → recover → enforce → attest → remember
 ```
 
 `forge0 verify --mode release --remote` checks that local release truth matches `origin`. Use this after pushing the release tag to confirm `origin/master` and `origin/vX.Y.Z` point to the local release commit.
+
+`forge0 verify --mode release --remote --ci` checks GitHub Actions status via `gh`. If `--ci` is requested and CI cannot be observed, verification fails.
 
 ## Honesty Note
 

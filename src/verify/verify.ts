@@ -34,6 +34,67 @@ export function parseAheadBehind(output: string): { ahead: number; behind: numbe
   return { ahead, behind };
 }
 
+export interface GhRun {
+  status?: string;
+  conclusion?: string | null;
+  headSha?: string;
+  workflowName?: string;
+  url?: string;
+}
+
+export interface CiSummary {
+  passed: boolean;
+  detail: string;
+  runCount: number;
+  failingRuns: string[];
+  pendingRuns: string[];
+}
+
+export function parseGhRuns(json: string): GhRun[] | null {
+  try {
+    const parsed = JSON.parse(json);
+    if (Array.isArray(parsed)) return parsed;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export function summarizeCiRuns(runs: GhRun[], head: string): CiSummary {
+  if (runs.length === 0) {
+    return { passed: false, detail: 'No GitHub Actions runs found for HEAD.', runCount: 0, failingRuns: [], pendingRuns: [] };
+  }
+
+  const failingRuns: string[] = [];
+  const pendingRuns: string[] = [];
+  let matchedCount = 0;
+
+  for (const run of runs) {
+    if (run.headSha && !head.startsWith(run.headSha)) continue;
+    matchedCount++;
+
+    if (run.status !== 'completed') {
+      pendingRuns.push(run.workflowName || 'unknown');
+    } else if (run.conclusion !== 'success') {
+      failingRuns.push(`${run.workflowName || 'unknown'} ${run.url || ''}`.trim());
+    }
+  }
+
+  if (matchedCount === 0) {
+    return { passed: false, detail: 'No GitHub Actions runs found for HEAD.', runCount: runs.length, failingRuns, pendingRuns };
+  }
+
+  if (failingRuns.length > 0) {
+    return { passed: false, detail: `CI failed: ${failingRuns.join(', ')}`, runCount: runs.length, failingRuns, pendingRuns };
+  }
+  
+  if (pendingRuns.length > 0) {
+    return { passed: false, detail: `CI still pending: ${pendingRuns.join(', ')}`, runCount: runs.length, failingRuns, pendingRuns };
+  }
+
+  return { passed: true, detail: 'All GitHub Actions checks passed for HEAD.', runCount: runs.length, failingRuns, pendingRuns };
+}
+
 // ─── Engine ─────────────────────────────────────────────────────────
 
 export function runVerify(
@@ -179,6 +240,33 @@ export function runVerify(
       } catch {
         // Upstream might not be set
         checks.push({ id: 'remote.sync_state', label: 'Upstream synchronization check', passed: false, severity: 'high', detail: 'No upstream set or network error.' });
+      }
+    }
+  }
+
+  // 5. CI checks
+  if (mode === 'release' && opts.ci) {
+    const head = receipt.head;
+    if (!head) {
+      checks.push({ id: 'ci.status', label: 'GitHub Actions checks passed for HEAD', passed: false, severity: 'critical', detail: 'Local HEAD hash not found.' });
+    } else {
+      try {
+        const out = execSync(`gh run list --commit ${head} --limit 10 --json status,conclusion,headSha,workflowName,url`, { cwd: repoRoot, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] });
+        const runs = parseGhRuns(out);
+        if (runs) {
+          const summary = summarizeCiRuns(runs, head);
+          checks.push({
+            id: 'ci.status',
+            label: 'GitHub Actions checks passed for HEAD',
+            passed: summary.passed,
+            severity: 'critical',
+            detail: summary.detail,
+          });
+        } else {
+          checks.push({ id: 'ci.status', label: 'GitHub Actions checks passed for HEAD', passed: false, severity: 'critical', detail: 'Failed to parse GitHub Actions runs output.' });
+        }
+      } catch {
+        checks.push({ id: 'ci.status', label: 'GitHub Actions checks passed for HEAD', passed: false, severity: 'critical', detail: 'GitHub Actions status not observable. Ensure gh is installed and authenticated.' });
       }
     }
   }

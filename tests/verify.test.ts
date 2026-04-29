@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { runVerify, parseLsRemoteHash, parseAheadBehind } from '../src/verify/verify.js';
+import { runVerify, parseLsRemoteHash, parseAheadBehind, parseGhRuns, summarizeCiRuns } from '../src/verify/verify.js';
 import { resolve } from 'node:path';
 
 const REPO_ROOT = resolve(process.cwd());
@@ -24,6 +24,43 @@ describe('runVerify parser helpers', () => {
   it('parseAheadBehind returns null on invalid', () => {
     expect(parseAheadBehind('')).toBe(null);
     expect(parseAheadBehind('nan\t0')).toBe(null);
+  });
+
+  it('parseGhRuns parses valid gh JSON', () => {
+    const json = '[{"status":"completed","conclusion":"success","headSha":"abc"}]';
+    expect(parseGhRuns(json)).toEqual([{status: 'completed', conclusion: 'success', headSha: 'abc'}]);
+  });
+
+  it('parseGhRuns returns null for invalid JSON or non-array', () => {
+    expect(parseGhRuns('invalid')).toBe(null);
+    expect(parseGhRuns('{"status":"completed"}')).toBe(null);
+  });
+
+  it('summarizeCiRuns passes when all runs completed with success', () => {
+    const runs = [{ status: 'completed', conclusion: 'success', headSha: 'abc', workflowName: 'CI' }];
+    const summary = summarizeCiRuns(runs, 'abc');
+    expect(summary.passed).toBe(true);
+  });
+
+  it('summarizeCiRuns fails when no runs exist or none match head', () => {
+    expect(summarizeCiRuns([], 'abc').passed).toBe(false);
+    
+    const runs = [{ status: 'completed', conclusion: 'success', headSha: 'def', workflowName: 'CI' }];
+    expect(summarizeCiRuns(runs, 'abc').passed).toBe(false);
+  });
+
+  it('summarizeCiRuns fails when a run is pending', () => {
+    const runs = [{ status: 'in_progress', conclusion: null, headSha: 'abc', workflowName: 'CI' }];
+    const summary = summarizeCiRuns(runs, 'abc');
+    expect(summary.passed).toBe(false);
+    expect(summary.detail).toContain('CI still pending: CI');
+  });
+
+  it('summarizeCiRuns fails when a run conclusion is failure', () => {
+    const runs = [{ status: 'completed', conclusion: 'failure', headSha: 'abc', workflowName: 'CI', url: 'http://test' }];
+    const summary = summarizeCiRuns(runs, 'abc');
+    expect(summary.passed).toBe(false);
+    expect(summary.detail).toContain('CI failed: CI http://test');
   });
 });
 

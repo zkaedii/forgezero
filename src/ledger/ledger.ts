@@ -265,7 +265,7 @@ export function recordVerifyEvent(
       verified: ['local repository state', 'verification gates'],
       notObservable: ['remote CI', 'runtime agent behavior'],
     },
-    sourceCommand: `forge0 verify --mode ${mode}${opts.remote ? ' --remote' : ''}`,
+    sourceCommand: `forge0 verify --mode ${mode}${opts.remote ? ' --remote' : ''}${opts.ci ? ' --ci' : ''}`,
   }, cliVersion);
 }
 

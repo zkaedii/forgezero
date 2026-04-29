@@ -692,13 +692,14 @@ ledger
   .requiredOption('-e, --event <event>', 'Event kind (verify|receipt)')
   .option('-m, --mode <mode>', 'Mode (for verify event)', 'release')
   .option('--remote', 'Include remote checks when recording verify event')
+  .option('--ci', 'Include GitHub Actions CI checks when recording verify event')
   .option('--json', 'Emit JSON instead of formatted text')
   .action((opts) => {
     const repoRoot = process.cwd();
     let entry;
 
     if (opts.event === 'verify') {
-      entry = recordVerifyEvent(repoRoot, opts.mode as any, pkgVersion, { remote: !!opts.remote });
+      entry = recordVerifyEvent(repoRoot, opts.mode as any, pkgVersion, { remote: !!opts.remote, ci: !!opts.ci });
     } else if (opts.event === 'receipt') {
       entry = recordReceiptEvent(repoRoot, pkgVersion);
     } else {
@@ -843,10 +844,11 @@ program
   .description('Enforce trust criteria — precommit, release, or bundle modes')
   .option('-m, --mode <mode>', 'Verification mode (precommit|release|bundle)', 'release')
   .option('--remote', 'Include origin branch/tag synchronization checks')
+  .option('--ci', 'Include GitHub Actions CI checks')
   .option('--json', 'Emit JSON instead of formatted text')
   .action((opts) => {
     const mode = opts.mode as any;
-    const report = runVerify(process.cwd(), mode, pkgVersion, { remote: !!opts.remote });
+    const report = runVerify(process.cwd(), mode, pkgVersion, { remote: !!opts.remote, ci: !!opts.ci });
 
     if (opts.json) {
       process.stdout.write(JSON.stringify(report, null, 2) + '\n');

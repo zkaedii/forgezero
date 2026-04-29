@@ -7,6 +7,7 @@ export type VerifyMode = 'precommit' | 'release' | 'bundle';
 
 export interface VerifyOptions {
   remote?: boolean;
+  ci?: boolean;
 }
 
 export interface VerifyResult {
