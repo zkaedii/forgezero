@@ -432,44 +432,59 @@ program
 
     const hookContent = `#!/bin/sh
 # Installed by forge0 install-hook
-# Three gates: typecheck → tests → .agents/ audit. All must pass.
+# Three gates: typecheck \u2192 tests \u2192 .agents/ audit. All must pass.
 
-# Gate 1: TypeScript typecheck (catches duplicate declarations, type errors)
+set -u
+
+tmpdir="\$(mktemp -d "\${TMPDIR:-/tmp}/forge0.XXXXXX")"
+trap 'rm -rf "$tmpdir"' EXIT
+
+run_forge0() {
+  if command -v forge0 >/dev/null 2>&1; then
+    forge0 "$@"
+  elif [ -x ./node_modules/.bin/forge0 ]; then
+    ./node_modules/.bin/forge0 "$@"
+  else
+    echo "\u2717 forge0 is not available on PATH or in ./node_modules/.bin"
+    exit 1
+  fi
+}
+
+# Gate 1: TypeScript typecheck.
 if [ -f tsconfig.json ]; then
-  npx tsc --noEmit > /tmp/forge0-tsc.log 2>&1
+  npx tsc --noEmit > "$tmpdir/forge0-tsc.log" 2>&1
   if [ $? -ne 0 ]; then
-    echo "✗ tsc --noEmit failed:"
-    cat /tmp/forge0-tsc.log
-    rm -f /tmp/forge0-tsc.log
+    echo "\u2717 tsc --noEmit failed:"
+    cat "$tmpdir/forge0-tsc.log"
     exit 1
   fi
-  rm -f /tmp/forge0-tsc.log
 fi
 
-# Gate 2: Tests (catches regressions before they ship)
-if [ -f package.json ] && grep -q '"test":' package.json; then
-  npm test --silent > /tmp/forge0-test.log 2>&1
+# Gate 2: Tests.
+if [ -f package.json ] && node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts.test ? 0 : 1)" >/dev/null 2>&1; then
+  npm test --silent > "$tmpdir/forge0-test.log" 2>&1
   if [ $? -ne 0 ]; then
-    echo "✗ npm test failed:"
-    tail -30 /tmp/forge0-test.log
-    rm -f /tmp/forge0-test.log
+    echo "\u2717 npm test failed:"
+    tail -30 "$tmpdir/forge0-test.log"
     exit 1
   fi
-  rm -f /tmp/forge0-test.log
 fi
 
-# Gate 3: .agents/ audit
-forge0 audit --json > /tmp/forge0-audit.log 2>&1
-result=$?
-case $result in
-  0) rm -f /tmp/forge0-audit.log; exit 0 ;;
-  2) echo "✗ forge0 audit detected .agents/ changes — re-run 'forge0 audit' to review."
-     rm -f /tmp/forge0-audit.log; exit 1 ;;
-  *) echo "✗ forge0 audit failed with exit $result:"
-     tail -10 /tmp/forge0-audit.log
-     rm -f /tmp/forge0-audit.log
-     exit 1 ;;
-esac
+# Gate 3: .agents/ audit.
+if [ -d .agents ]; then
+  run_forge0 audit --json --path .agents > "$tmpdir/forge0-audit.log" 2>&1
+  result=$?
+  case $result in
+    0) exit 0 ;;
+    2) echo "\u2717 forge0 audit detected .agents/ changes \u2014 re-run 'forge0 audit --path .agents' to review."
+       exit 1 ;;
+    *) echo "\u2717 forge0 audit failed with exit $result:"
+       tail -10 "$tmpdir/forge0-audit.log"
+       exit 1 ;;
+  esac
+fi
+
+exit 0
 `;
 
     writeFileSync(hookPath, hookContent, { mode: 0o755 });
