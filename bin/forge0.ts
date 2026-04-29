@@ -9,6 +9,7 @@
  *   forge0 share           — Package .agents/ for team distribution
  *   forge0 selftest        — Validate ForgeZero paths and dependencies
  *   forge0 sync-skill      — Synchronize canonical SKILL.md to live directory
+ *   forge0 install-hook    — Install git hook for pre-commit auditing
  */
 
 import { Command } from 'commander';
@@ -68,6 +69,8 @@ program
   .description('ForgeZero — Governance & Provenance for Antigravity .agents/')
   .version('0.1.0')
   .hook('preAction', () => {
+    if (process.argv.includes('--json')) return;
+
     if (isFirstRun()) {
       console.log(getBanner());
       markFirstRunComplete();
@@ -82,20 +85,28 @@ program
 program
   .command('audit')
   .description('Diff .agents/ against last git commit, surface Skills/Rules/Workflow changes')
-  .option('-d, --depth <n>', 'Number of commits to diff against', '1')
-  .option('-p, --path <path>', 'Path to .agents/ or Skills directory')
+  .option('-d, --depth <n>', 'Number of commits to check back', '1')
+  .option('-p, --path <path>', 'Path to workspace root (defaults to cwd)')
+  .option('--json', 'Emit JSON instead of formatted text')
   .action((opts) => {
     const workspaceRoot = process.cwd();
     const targetPath = opts.path ? resolve(opts.path) : workspaceRoot;
     const depth = parseInt(opts.depth, 10) || 1;
+
+    const report = runAudit(workspaceRoot, targetPath, depth);
+
+    // JSON mode: emit and exit before any pretty-printing
+    if (opts.json) {
+      process.stdout.write(JSON.stringify(report, null, 2) + '\n');
+      if (!report.gitAvailable) process.exit(1);
+      process.exit(report.entries.length > 0 ? 2 : 0);
+    }
 
     console.log(sectionHeader('AUDIT REPORT'));
     console.log(fmt.dim(`  Workspace: ${workspaceRoot}`));
     console.log(fmt.dim(`  Target:    ${targetPath}`));
     console.log(fmt.dim(`  Depth:     HEAD~${depth}`));
     console.log();
-
-    const report = runAudit(workspaceRoot, targetPath, depth);
 
     // Gate: refuse to run if git is not available
     if (!report.gitAvailable) {
@@ -113,8 +124,8 @@ program
       for (const entry of report.entries) {
         const change = formatChangeType(entry.changeType);
         const surfaceText = `[${entry.surfaceType}]`;
-        const surface = entry.surfaceType.includes('[META]') 
-          ? fmt.magentaBold(surfaceText) 
+        const surface = entry.surfaceType.includes('[META]')
+          ? fmt.magentaBold(surfaceText)
           : fmt.cyan(surfaceText);
         console.log(`  ${change} ${surface} ${entry.filePath}`);
         if (entry.semanticDiff) {
@@ -210,7 +221,7 @@ program
     // Structural enforcement: prevent bundle creation on SKILL.md drift
     const canonicalSkillPath = getCanonicalSkillPath();
     const liveSkillPath = join(getAntigravityDataRoot(), 'skills', 'forgezero', 'SKILL.md');
-    
+
     if (existsSync(canonicalSkillPath) && existsSync(liveSkillPath)) {
       const canonicalContent = readFileSync(canonicalSkillPath, 'utf-8');
       const liveContent = readFileSync(liveSkillPath, 'utf-8');
@@ -363,9 +374,9 @@ program
       if (!existsSync(targetDir)) {
         mkdirSync(targetDir, { recursive: true });
       }
-      
+
       writeFileSync(targetPath, sourceContent, 'utf-8');
-      
+
       console.log(fmt.green(`  ✓ Skill synchronized successfully.`));
       console.log(fmt.dim(`    Source: ${sourcePath}`));
       console.log(fmt.dim(`    Target: ${targetPath}`));
@@ -396,6 +407,75 @@ program
     console.log(`     ${fmt.cyan(`forge0 provenance ${conversationId}`)}`);
     console.log(fmt.dim('  for the v0.1.x [DETECTED_WHEN_EXPLICIT] lower bound.'));
     process.exit(0);
+  });
+
+// ─── forge0 install-hook ────────────────────────────────────────────
+
+program
+  .command('install-hook')
+  .description('Install git pre-commit hook that runs forge0 audit')
+  .option('--force', 'Overwrite existing pre-commit hook')
+  .action((opts) => {
+    const hookPath = join(process.cwd(), '.git', 'hooks', 'pre-commit');
+
+    if (!existsSync(join(process.cwd(), '.git'))) {
+      console.log(fmt.red('  ✗ Not a git repository.'));
+      process.exit(1);
+    }
+
+    if (existsSync(hookPath) && !opts.force) {
+      console.log(fmt.yellow('  ⚠ pre-commit hook already exists.'));
+      console.log(fmt.dim(`    ${hookPath}`));
+      console.log(fmt.dim('    Pass --force to overwrite, or merge manually.'));
+      process.exit(2);
+    }
+
+    const hookContent = `#!/bin/sh
+# Installed by forge0 install-hook
+# Three gates: typecheck → tests → .agents/ audit. All must pass.
+
+# Gate 1: TypeScript typecheck (catches duplicate declarations, type errors)
+if [ -f tsconfig.json ]; then
+  npx tsc --noEmit > /tmp/forge0-tsc.log 2>&1
+  if [ $? -ne 0 ]; then
+    echo "✗ tsc --noEmit failed:"
+    cat /tmp/forge0-tsc.log
+    rm -f /tmp/forge0-tsc.log
+    exit 1
+  fi
+  rm -f /tmp/forge0-tsc.log
+fi
+
+# Gate 2: Tests (catches regressions before they ship)
+if [ -f package.json ] && grep -q '"test":' package.json; then
+  npm test --silent > /tmp/forge0-test.log 2>&1
+  if [ $? -ne 0 ]; then
+    echo "✗ npm test failed:"
+    tail -30 /tmp/forge0-test.log
+    rm -f /tmp/forge0-test.log
+    exit 1
+  fi
+  rm -f /tmp/forge0-test.log
+fi
+
+# Gate 3: .agents/ audit
+forge0 audit --json > /tmp/forge0-audit.log 2>&1
+result=$?
+case $result in
+  0) rm -f /tmp/forge0-audit.log; exit 0 ;;
+  2) echo "✗ forge0 audit detected .agents/ changes — re-run 'forge0 audit' to review."
+     rm -f /tmp/forge0-audit.log; exit 1 ;;
+  *) echo "✗ forge0 audit failed with exit $result:"
+     tail -10 /tmp/forge0-audit.log
+     rm -f /tmp/forge0-audit.log
+     exit 1 ;;
+esac
+`;
+
+    writeFileSync(hookPath, hookContent, { mode: 0o755 });
+    console.log(fmt.green('  ✓ Installed pre-commit hook.'));
+    console.log(fmt.dim(`    ${hookPath}`));
+    console.log(fmt.dim('    The hook will block commits with .agents/ changes until reviewed.'));
   });
 
 // ─── Parse ──────────────────────────────────────────────────────────

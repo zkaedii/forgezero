@@ -2,8 +2,10 @@
  * Audit tests — git diff bridge, surface classification.
  */
 
-import { describe, it, expect } from 'vitest';
-import { classifySurface, checkGitAvailable, runAudit } from '../src/audit/audit.js';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { resolve, join } from 'node:path';
+import { execSync } from 'node:child_process';
+import { runAudit, classifySurface, checkGitAvailable } from '../src/audit/audit.js';
 
 describe('Surface Classification', () => {
   it('classifies SKILL.md files as Skill', () => {
@@ -60,5 +62,35 @@ describe('Audit Report Fields', () => {
     expect(report.caveat).toContain('Knowledge Items');
     expect(report.caveat).toContain('Model-Decision');
     expect(report.caveat).toContain('forge0 provenance');
+  });
+  it('audit --json produces parseable JSON with required fields', () => {
+    try {
+      const output = execSync('npx tsx bin/forge0.ts audit --json', {
+        cwd: resolve(import.meta.dirname, '..'),
+        encoding: 'utf-8',
+      });
+      const parsed = JSON.parse(output);
+      expect(parsed).toHaveProperty('entries');
+      expect(parsed).toHaveProperty('totalChanges');
+      expect(parsed).toHaveProperty('gitAvailable');
+      expect(parsed).toHaveProperty('caveat');
+    } catch (e: any) {
+      if (e.status === 2 || e.status === 0) {
+        const parsed = JSON.parse(e.stdout);
+        expect(parsed).toHaveProperty('entries');
+        expect(parsed).toHaveProperty('totalChanges');
+        expect(parsed).toHaveProperty('gitAvailable');
+        expect(parsed).toHaveProperty('caveat');
+      } else {
+        throw e;
+      }
+    }
+  });
+
+  it('runAudit excludes Unknown-surface files from entries (HYGIENE-FORGE-004)', () => {
+    const report = runAudit(process.cwd(), process.cwd(), 1);
+    for (const entry of report.entries) {
+      expect(entry.surfaceType).not.toBe('Unknown');
+    }
   });
 });

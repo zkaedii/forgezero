@@ -222,12 +222,18 @@ export function runAudit(
 
   const changes = getGitChanges(workspaceRoot, targetPath, depth);
 
-  const entries: AuditEntry[] = changes.map((change) => ({
+  const allEntries: AuditEntry[] = changes.map((change) => ({
     filePath: change.filePath,
     changeType: parseGitStatus(change.status),
     surfaceType: classifySurface(change.filePath),
     semanticDiff: generateSkillSemanticDiff(workspaceRoot, change.filePath),
   }));
+
+  // Scope filter: audit only governs .agents/ surfaces.
+  // Files classified as 'Unknown' are out of scope by definition —
+  // they are application source / tests / docs, not governance artifacts.
+  // The caveat field promises ".agents/ surfaces only"; this filter honors that.
+  const entries = allEntries.filter((entry) => entry.surfaceType !== 'Unknown');
 
   return {
     scannedAt: new Date().toISOString(),
