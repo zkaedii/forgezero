@@ -112,7 +112,10 @@ program
 
       for (const entry of report.entries) {
         const change = formatChangeType(entry.changeType);
-        const surface = fmt.cyan(`[${entry.surfaceType}]`);
+        const surfaceText = `[${entry.surfaceType}]`;
+        const surface = entry.surfaceType.includes('[META]') 
+          ? fmt.magentaBold(surfaceText) 
+          : fmt.cyan(surfaceText);
         console.log(`  ${change} ${surface} ${entry.filePath}`);
         if (entry.semanticDiff) {
           console.log(fmt.dim(`           ${entry.semanticDiff}`));

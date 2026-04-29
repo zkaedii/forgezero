@@ -56,6 +56,9 @@ export function classifySurface(
 ): AuditEntry['surfaceType'] {
   const normalized = filePath.replace(/\\/g, '/').toLowerCase();
 
+  if (normalized.includes('docs/skill/skill.md') || normalized.includes('forgezero/skill.md')) {
+    return 'Skill [META]';
+  }
   if (normalized.includes('skill.md') || normalized.includes('/skills/')) {
     return 'Skill';
   }

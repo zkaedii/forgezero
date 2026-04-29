@@ -21,6 +21,7 @@ export const fmt = {
   redBold: (t: string) => color('1;31', t),
   greenBold: (t: string) => color('1;32', t),
   cyanBold: (t: string) => color('1;36', t),
+  magentaBold: (t: string) => color('1;35', t),
 };
 
 /**

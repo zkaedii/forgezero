@@ -116,7 +116,7 @@ export type ChangeType = 'Added' | 'Modified' | 'Deleted' | 'Renamed';
 export interface AuditEntry {
   filePath: string;
   changeType: ChangeType;
-  surfaceType: 'Skill' | 'Rule' | 'Workflow' | 'MCP' | 'Permission' | 'Unknown';
+  surfaceType: 'Skill' | 'Rule' | 'Workflow' | 'MCP' | 'Permission' | 'Unknown' | '[META]' | 'Skill [META]';
   /** Semantic description of what changed (e.g., "activation mode: Model-Decision → Always-On") */
   semanticDiff?: string;
 }

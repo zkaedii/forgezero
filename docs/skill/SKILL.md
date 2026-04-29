@@ -33,7 +33,8 @@ Trigger when:
 
 Run: `forge0 share --tag <semver>`
 Default scrubs secrets. Refuses with exit 3 if any detected.
-NEVER suggest `--allow-secrets` unprompted.
+Refuses with exit 4 if live SKILL.md drifted from repo.
+NEVER suggest `--allow-secrets` or `--allow-skill-drift` unprompted.
 
 ## Hard prohibitions
 - Do not invent flags. The four real subcommands are: audit, provenance, share, selftest.
