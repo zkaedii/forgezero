@@ -3,6 +3,17 @@
   "version": "0.1.2",
   "description": "Governance & provenance layer for Antigravity .agents/ extension surface",
   "type": "module",
+  "license": "MIT",
+  "author": "zkaedi",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zkaedii/forgezero.git"
+  },
+  "bugs": {
+    "url": "https://github.com/zkaedii/forgezero/issues"
+  },
+  "homepage": "https://github.com/zkaedii/forgezero#readme",
+  "keywords": ["antigravity", "governance", "provenance", "agents", "skills", "audit"],
   "bin": {
     "forge0": "dist/bin/forge0.js"
   },
