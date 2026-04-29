@@ -8,6 +8,7 @@
  *   forge0 provenance <id> — Trace decision lineage for a conversation
  *   forge0 share           — Package .agents/ for team distribution
  *   forge0 selftest        — Validate ForgeZero paths and dependencies
+ *   forge0 sync-skill      — Synchronize canonical SKILL.md to live directory
  */
 
 import { Command } from 'commander';
@@ -291,6 +292,42 @@ program
       console.log(fmt.green('  All checks passed. ForgeZero is ready.'));
     } else {
       console.log(fmt.yellow('  Some checks failed. ForgeZero may have limited functionality.'));
+    }
+  });
+
+// ─── forge0 sync-skill ──────────────────────────────────────────────
+
+program
+  .command('sync-skill')
+  .description('Synchronize the canonical repo SKILL.md to the live Antigravity agents directory')
+  .action(() => {
+    console.log(sectionHeader('SYNC SKILL'));
+    console.log();
+
+    const sourcePath = resolve(import.meta.dirname, '../docs/skill/SKILL.md');
+    const targetDir = join(getAntigravityDataRoot(), 'skills', 'forgezero');
+    const targetPath = join(targetDir, 'SKILL.md');
+
+    if (!existsSync(sourcePath)) {
+      console.log(fmt.red(`  ✗ Canonical SKILL.md not found at:\n    ${sourcePath}`));
+      console.log(fmt.dim('    This command must be run from an environment containing the docs/ directory.'));
+      process.exit(1);
+    }
+
+    try {
+      if (!existsSync(targetDir)) {
+        mkdirSync(targetDir, { recursive: true });
+      }
+      
+      const content = readFileSync(sourcePath, 'utf-8');
+      writeFileSync(targetPath, content, 'utf-8');
+      
+      console.log(fmt.green(`  ✓ Skill synchronized successfully.`));
+      console.log(fmt.dim(`    Source: ${sourcePath}`));
+      console.log(fmt.dim(`    Target: ${targetPath}`));
+    } catch (e: any) {
+      console.log(fmt.red(`  ✗ Failed to synchronize skill: ${e.message}`));
+      process.exit(1);
     }
   });
 
