@@ -1,6 +1,6 @@
 {
   "name": "forgezero",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Governance & provenance layer for Antigravity .agents/ extension surface",
   "type": "module",
   "bin": {
