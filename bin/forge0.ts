@@ -4,7 +4,8 @@
  * forge0 — ForgeZero CLI entry point.
  *
  * Commands:
- *   forge0 audit          — Diff .agents/ against last git commit
+ *   forge0 status          — Trust posture at a glance
+ *   forge0 audit           — Diff .agents/ against last git commit
  *   forge0 provenance <id> — Trace decision lineage for a conversation
  *   forge0 share           — Package .agents/ for team distribution
  *   forge0 selftest        — Validate ForgeZero paths and dependencies
@@ -16,6 +17,7 @@ import { Command } from 'commander';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import {
+  buildTrustReport,
   runAudit,
   runProvenance,
   createBundle,
@@ -491,6 +493,100 @@ exit 0
     console.log(fmt.green('  ✓ Installed pre-commit hook.'));
     console.log(fmt.dim(`    ${hookPath}`));
     console.log(fmt.dim('    The hook will block commits with .agents/ changes until reviewed.'));
+  });
+
+// ─── forge0 status ──────────────────────────────────────────────────
+
+program
+  .command('status')
+  .description('Trust posture at a glance — git, hook, audit, skill drift')
+  .option('--json', 'Emit JSON instead of formatted text')
+  .action((opts) => {
+    const report = buildTrustReport(process.cwd());
+
+    if (opts.json) {
+      process.stdout.write(JSON.stringify(report, null, 2) + '\n');
+      process.exit(0);
+    }
+
+    // ── Header ──
+    console.log(sectionHeader('FORGEZERO STATUS'));
+    console.log();
+
+    // ── Core fields ──
+    const row = (label: string, value: string) =>
+      console.log(`  ${fmt.dim(label.padEnd(16))} ${value}`);
+
+    row('Version:', report.version ? fmt.bold(report.version) : fmt.dim('unknown'));
+
+    if (report.git?.available) {
+      const g = report.git;
+      row('Git:', g.clean ? fmt.green('clean') : fmt.redBold('dirty'));
+      row('Branch:', fmt.dim(g.branch ?? 'unknown'));
+      row('HEAD:', fmt.dim(g.head ?? 'unknown'));
+      row('Tag at HEAD:', g.tagsAtHead.length > 0 ? fmt.cyan(g.tagsAtHead.join(', ')) : fmt.dim('none'));
+    } else {
+      row('Git:', fmt.redBold('unavailable'));
+    }
+
+    console.log();
+
+    row('Hook:', report.hook?.installed ? fmt.green('installed') : fmt.yellow('not installed'));
+    if (report.hook?.installed) {
+      row('Hook gates:', fmt.dim(report.hook.gates.join(', ') || 'none detected'));
+    }
+
+    row('Agents dir:', report.agents?.present ? fmt.green('present') : fmt.dim('absent'));
+
+    if (report.audit) {
+      row('Audit:', report.audit.clean ? fmt.green('clean') : fmt.yellow(`${report.audit.totalChanges} change(s)`));
+    }
+
+    if (report.skillDrift) {
+      row('Skill drift:', report.skillDrift.detected ? fmt.yellow('detected') : fmt.green('none'));
+    }
+
+    row('Build:', report.build?.configured ? fmt.dim('configured') : fmt.dim('not configured'));
+    row('Tests:', report.tests?.configured ? fmt.dim('configured') : fmt.dim('not configured'));
+
+    // ── Trust posture ──
+    console.log();
+    const postureColors: Record<string, (s: string) => string> = {
+      RELEASABLE: fmt.green,
+      GUARDED: fmt.yellow,
+      DIRTY: fmt.redBold,
+      BUNDLE_SAFE: fmt.green,
+      DRIFT_DETECTED: fmt.yellow,
+      SECRETS_BLOCKED: fmt.redBold,
+      UNINITIALIZED: fmt.dim,
+      TRACE_LIMITED: fmt.dim,
+      UNKNOWN: fmt.dim,
+    };
+    const postureColor = postureColors[report.posture] ?? fmt.dim;
+    console.log(`  ${fmt.bold('Trust posture:')} ${postureColor(report.posture)}`);
+
+    // ── Signals (non-info only in human mode) ──
+    const notable = report.signals.filter((s) => s.level !== 'info');
+    if (notable.length > 0) {
+      console.log();
+      for (const sig of notable) {
+        const icon = sig.level === 'critical' || sig.level === 'high' ? fmt.redBold('✗') : fmt.yellow('⚠');
+        console.log(`  ${icon} ${sig.title}`);
+        console.log(`    ${fmt.dim(sig.detail)}`);
+      }
+    }
+
+    // ── Honesty bound ──
+    console.log();
+    console.log(fmt.dim('  Honesty bound:'));
+    for (const v of report.honesty.verified) {
+      console.log(fmt.dim(`    ✓ ${v}`));
+    }
+    for (const n of report.honesty.notObservable) {
+      console.log(fmt.dim(`    ⚠ (not observable) ${n}`));
+    }
+
+    process.exit(0);
   });
 
 // ─── Parse ──────────────────────────────────────────────────────────
