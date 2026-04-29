@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.16] - 2026-04-29
+
+### Added
+- Added `forge0 release --dry-run` planner for safe release orchestration.
+- Added `--bump` support for patch, minor, major, and none release plans.
+- Added release plans that include optional remote and CI verification steps.
+
+### Security
+- Release execution remains intentionally disabled in v0.1.x; the planner previews commands without mutating Git state.
+
 ## [0.1.15] - 2026-04-29
 
 ### Fixed

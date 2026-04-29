@@ -12,6 +12,20 @@ Governance and provenance CLI for Antigravity `.agents/` surface.
 
 > **Velocity without amnesia.** ForgeZero ledger gives high-velocity development a memory: local, append-only, hash-chained, and honesty-bound.
 
+## Release planner
+
+ForgeZero can preview the release checklist without executing commands:
+
+```bash
+forge0 release --bump patch --verify-remote --verify-ci --dry-run
+```
+
+The release planner follows the principle:
+
+> Automate the checklist, not the honesty.
+
+In v0.1.x, release execution is intentionally disabled. Use `--dry-run` to preview the manual release sequence.
+
 ## Quickstart
 
 ```bash

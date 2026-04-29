@@ -36,6 +36,7 @@ import {
   getLastLedgerEntry,
   recordVerifyEvent,
   recordReceiptEvent,
+  planRelease,
   fmt,
   sectionHeader,
   formatChangeType,
@@ -974,6 +975,60 @@ program
     }
 
     process.exit(0);
+  });
+
+// ─── forge0 release ───────────────────────────────────────────────────
+
+program
+  .command('release')
+  .description('Safely orchestrate the release checklist and seal the trust loop')
+  .option('--bump <type>', 'Version bump type (patch, minor, major, none)', 'none')
+  .option('--verify-remote', 'Include remote origin synchronization check')
+  .option('--verify-ci', 'Include GitHub Actions CI check')
+  .option('--dry-run', 'Plan and preview the release without executing commands')
+  .option('--json', 'Emit JSON instead of formatted text')
+  .action((opts) => {
+    const validBumps = ['patch', 'minor', 'major', 'none'] as const;
+    const bumpType = validBumps.includes(opts.bump) ? opts.bump : 'none';
+
+    const plan = planRelease(process.cwd(), {
+      versionType: bumpType as any,
+      verifyRemote: !!opts.verifyRemote,
+      verifyCi: !!opts.verifyCi,
+      dryRun: !!opts.dryRun,
+    });
+
+    if (opts.json) {
+      process.stdout.write(JSON.stringify(plan, null, 2) + '\n');
+      process.exit(0);
+    }
+
+    console.log(sectionHeader('FORGEZERO RELEASE'));
+    console.log();
+    console.log(fmt.dim('  Automate the checklist, not the honesty.'));
+    console.log();
+    console.log(`  ${fmt.dim('Current version:')} ${fmt.bold(plan.currentVersion)}`);
+    console.log(`  ${fmt.dim('Target version:')}  ${fmt.green(plan.targetVersion)}`);
+    console.log();
+
+    if (opts.dryRun) {
+      console.log(fmt.yellow('  [DRY RUN] Release Sequence Plan:'));
+      console.log();
+      for (let i = 0; i < plan.steps.length; i++) {
+        const step = plan.steps[i];
+        console.log(`  ${fmt.cyan((i + 1).toString().padStart(2, '0') + '.')} ${fmt.bold(step.name)}`);
+        console.log(fmt.dim(`      ${step.description}`));
+        console.log(fmt.dim(`      > ${step.command}`));
+        console.log();
+      }
+      
+      console.log(fmt.dim('  Dry run complete. No commands were executed.'));
+      process.exit(0);
+    } else {
+      console.log(fmt.redBold('  ✗ Execution mode is not yet implemented in v0.1.x.'));
+      console.log(fmt.dim('    Please use --dry-run to preview the manual release checklist.'));
+      process.exit(1);
+    }
   });
 
 // ─── Parse ──────────────────────────────────────────────────────────

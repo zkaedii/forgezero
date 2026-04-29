@@ -22,5 +22,7 @@ export { buildReleaseReceipt } from './receipt/receipt.js';
 export type { ReleaseReceipt, ReceiptCheck } from './receipt/types.js';
 export { runVerify } from './verify/verify.js';
 export type { VerifyResult, VerifyMode } from './verify/types.js';
-export * from './ledger/ledger.js';
 export * from './ledger/types.js';
+export * from './ledger/ledger.js';
+export * from './release/types.js';
+export * from './release/release.js';
