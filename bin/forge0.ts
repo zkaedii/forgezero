@@ -841,10 +841,11 @@ program
   .command('verify')
   .description('Enforce trust criteria — precommit, release, or bundle modes')
   .option('-m, --mode <mode>', 'Verification mode (precommit|release|bundle)', 'release')
+  .option('--remote', 'Include origin branch/tag synchronization checks')
   .option('--json', 'Emit JSON instead of formatted text')
   .action((opts) => {
     const mode = opts.mode as any;
-    const report = runVerify(process.cwd(), mode, pkgVersion);
+    const report = runVerify(process.cwd(), mode, pkgVersion, { remote: !!opts.remote });
 
     if (opts.json) {
       process.stdout.write(JSON.stringify(report, null, 2) + '\n');

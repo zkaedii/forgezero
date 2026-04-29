@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.9] - 2026-04-29
+
+### Added
+- `forge0 verify --remote` for remote branch/tag synchronization checks.
+- Remote release checks for `origin/<branch>`, expected version tag, and ahead/behind state.
+
+### Security
+- Release verification can now detect missing or divergent remote tags before a release is claimed.
+
 ## [0.1.8] - 2026-04-29
 
 ### Fixed

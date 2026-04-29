@@ -2,8 +2,8 @@
 
 Governance and provenance CLI for Antigravity `.agents/` surface.
 
-[![tests](https://img.shields.io/badge/tests-103%2F103-green)](./tests)
-[![version](https://img.shields.io/badge/version-0.1.7-blue)](./package.json)
+[![tests](https://img.shields.io/badge/tests-111%2F111-green)](./tests)
+[![version](https://img.shields.io/badge/version-0.1.9-blue)](./package.json)
 [![license](https://img.shields.io/badge/license-MIT-yellow)](./LICENSE)
 
 > **The honesty bound is load-bearing.** ForgeZero never claims to detect
@@ -23,7 +23,7 @@ forge0 share --tag v1   # secret-scrub-bundle for distribution
 forge0 install-hook     # install 3-gate pre-commit audit hook
 forge0 status           # trust posture at a glance
 forge0 doctor           # diagnose drift and release hazards
-forge0 verify           # enforce trust criteria for release
+forge0 verify --remote  # enforce trust criteria for release
 forge0 receipt          # generate a release attestation
 forge0 ledger record --event verify --mode release # record trust event
 ```
@@ -40,7 +40,7 @@ forge0 ledger record --event verify --mode release # record trust event
 | `install-hook` | Install production-safe 3-gate pre-commit hook | 0 = success / 1 = error / 2 = already exists |
 | `status` | Trust posture at a glance | 0 = success |
 | `doctor` | Diagnose workspace, release, and hook state | 0 = success |
-| `verify [--mode m]` | Enforce criteria for precommit/release/bundle | 0 = pass / 1 = blocking failure |
+| `verify [--mode m] [--remote]` | Enforce criteria for precommit/release/bundle | 0 = pass / 1 = blocking failure |
 | `receipt` | Generate a release attestation with honesty bound | 0 = success |
 | `ledger record` | Record a hash-chained trust event | 0 = success |
 | `ledger list` | Show recorded trust events | 0 = success |
@@ -54,6 +54,8 @@ forge0 ledger record --event verify --mode release # record trust event
 status → doctor → verify → receipt → ledger
 observe → recover → enforce → attest → remember
 ```
+
+`forge0 verify --mode release --remote` checks that local release truth matches `origin`. Use this after pushing the release tag to confirm `origin/master` and `origin/vX.Y.Z` point to the local release commit.
 
 ## Honesty Note
 

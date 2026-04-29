@@ -5,6 +5,10 @@
 
 export type VerifyMode = 'precommit' | 'release' | 'bundle';
 
+export interface VerifyOptions {
+  remote?: boolean;
+}
+
 export interface VerifyResult {
   generatedAt: string;
   mode: VerifyMode;

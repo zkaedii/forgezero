@@ -74,7 +74,7 @@ export function buildTrustReport(repoRoot: string): TrustReport {
     const statusOut = exec('git status --porcelain', repoRoot);
     const clean = statusOut === '';
     const branch = exec('git rev-parse --abbrev-ref HEAD', repoRoot) ?? undefined;
-    const head = exec('git rev-parse --short HEAD', repoRoot) ?? undefined;
+    const head = exec('git rev-parse HEAD', repoRoot) ?? undefined;
     const tagLine = exec('git tag --points-at HEAD', repoRoot);
     const tagsAtHead = tagLine ? tagLine.split('\n').filter(Boolean) : [];
 
