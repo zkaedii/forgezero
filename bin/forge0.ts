@@ -375,6 +375,29 @@ program
     }
   });
 
+// ─── forge0 trace (v0.2.0 Stub) ──────────────────────────────────────
+
+program
+  .command('trace <conversation-id>')
+  .description('[v0.2.0 — NOT IMPLEMENTED] Capture system-prompt-injected skill loads')
+  .action((conversationId: string) => {
+    console.log(sectionHeader('TRACE — NOT IMPLEMENTED'));
+    console.log();
+    console.log(fmt.yellow('  ⚠ forge0 trace is reserved for v0.2.0 and not yet implemented.'));
+    console.log();
+    console.log(fmt.dim('  The v0.2.0 thesis ([VERIFIED] via session 4cc0e9e2) states:'));
+    console.log(fmt.dim('  "Antigravity skill-load events are not durably recorded in any'));
+    console.log(fmt.dim('   user-readable file. Every governance tool built on this surface'));
+    console.log(fmt.dim('   produces lower-bound provenance reports until the trace problem'));
+    console.log(fmt.dim('   is solved."'));
+    console.log();
+    console.log(fmt.dim('  See: docs/v0.2.0-thesis.md'));
+    console.log(fmt.dim('  Until v0.2.0 ships, use:'));
+    console.log(`     ${fmt.cyan(`forge0 provenance ${conversationId}`)}`);
+    console.log(fmt.dim('  for the v0.1.x [DETECTED_WHEN_EXPLICIT] lower bound.'));
+    process.exit(0);
+  });
+
 // ─── Parse ──────────────────────────────────────────────────────────
 
 program.parse();
