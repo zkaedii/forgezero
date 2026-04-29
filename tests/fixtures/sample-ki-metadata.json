@@ -1,0 +1,13 @@
+{
+  "title": "Test KI — ForgeZero Scanner Verification",
+  "summary": "A test Knowledge Item for verifying the KI parser in ForgeZero. Contains sample references and artifact paths.",
+  "createdAt": "2026-04-01T00:00:00Z",
+  "updatedAt": "2026-04-15T12:30:00Z",
+  "references": [
+    "H:\\projects\\test\\src\\main.ts",
+    "H:\\projects\\test\\Makefile"
+  ],
+  "artifacts": [
+    "artifacts/test_resolution.md"
+  ]
+}
