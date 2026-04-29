@@ -3,7 +3,7 @@
 Governance and provenance CLI for Antigravity `.agents/` surface.
 
 [![tests](https://img.shields.io/badge/tests-passing-green)](./tests)
-[![version](https://img.shields.io/badge/version-0.1.11-blue)](./package.json)
+[![version](https://img.shields.io/badge/version-0.1.12-blue)](./package.json)
 [![license](https://img.shields.io/badge/license-MIT-yellow)](./LICENSE)
 
 > **The honesty bound is load-bearing.** ForgeZero never claims to detect
@@ -35,7 +35,7 @@ forge0 ledger record --event verify --mode release --remote --ci # record trust 
 | `audit` | Diff `.agents/` vs `HEAD~1` | 0 = no change / 2 = changes |
 | `provenance <id>` | Build decision graph for conversation | 0 = success / 1 = error |
 | `share --tag <t>` | Create `.forge0` bundle for sharing | 0 = success / 1 = error |
-| `sync-skill [--check]` | Push canonical SKILL.md to live agent dir | 0 = synced / 1 = error / 2 = drift (check mode) |
+| `sync-skill [--check]` | Push canonical SKILL.md to live agent dir | 0 = synced / 1 = error / 2 = drift check mode |
 | `selftest` | Validate paths, git, dependencies | 0 = pass / 1 = some checks failed |
 | `install-hook` | Install production-safe 3-gate pre-commit hook | 0 = success / 1 = error / 2 = already exists |
 | `status` | Trust posture at a glance | 0 = success |
@@ -46,7 +46,7 @@ forge0 ledger record --event verify --mode release --remote --ci # record trust 
 | `ledger list` | Show recorded trust events | 0 = success |
 | `ledger last` | Show the latest trust event | 0 = success |
 | `ledger verify` | Verify ledger hash-chain integrity | 0 = pass / 1 = fail |
-| `trace <id>` | [v0.2.0 — not implemented] | 0 (stub) |
+| `trace <id>` | [v0.2.0 — not implemented] | 0 stub |
 
 ## Lifecycle
 
@@ -70,8 +70,8 @@ or runtime agent behavior.
 - Log into Antigravity
 - Read cookies, tokens, or auth material
 - Proxy API calls to any Antigravity service
-- Read `~/.antigravity/` (IDE extension binaries — not agent data)
-- Read `~/.gemini/antigravity/prompting/` (internal browser-agent prompts)
+- Read `~/.antigravity/` IDE extension binaries — not agent data
+- Read `~/.gemini/antigravity/prompting/` internal browser-agent prompts
 - Claim detection completeness when the data on disk doesn't support it
 
 ForgeZero only reads agent-data paths the user already owns under
@@ -80,4 +80,3 @@ ForgeZero only reads agent-data paths the user already owns under
 ## License
 
 [MIT](./LICENSE)
-
