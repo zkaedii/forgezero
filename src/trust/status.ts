@@ -71,7 +71,7 @@ export function buildTrustReport(repoRoot: string): TrustReport {
   let git: TrustReport['git'] | undefined;
 
   if (gitAvailable) {
-    const statusOut = exec('git status --porcelain --untracked-files=no', repoRoot);
+    const statusOut = exec('git status --porcelain', repoRoot);
     const clean = statusOut === '';
     const branch = exec('git rev-parse --abbrev-ref HEAD', repoRoot) ?? undefined;
     const head = exec('git rev-parse --short HEAD', repoRoot) ?? undefined;
