@@ -199,8 +199,25 @@ program
   .option('-o, --output <dir>', 'Output directory for the bundle', '.forge0/bundles')
   .option('--include-mcp', 'Include mcp_config.json in bundle')
   .option('--allow-secrets', 'Allow secrets in bundle (DANGEROUS)')
+  .option('--allow-skill-drift', 'Allow bundle creation even if live SKILL.md has drifted from repo')
   .action((opts) => {
     console.log(sectionHeader('SHARE — BUNDLE CREATION'));
+
+    // Structural enforcement: prevent bundle creation on SKILL.md drift
+    const canonicalSkillPath = resolve(import.meta.dirname, '../docs/skill/SKILL.md');
+    const liveSkillPath = join(getAntigravityDataRoot(), 'skills', 'forgezero', 'SKILL.md');
+    
+    if (existsSync(canonicalSkillPath) && existsSync(liveSkillPath)) {
+      const canonicalContent = readFileSync(canonicalSkillPath, 'utf-8');
+      const liveContent = readFileSync(liveSkillPath, 'utf-8');
+      if (canonicalContent !== liveContent && !opts.allowSkillDrift) {
+        console.log(fmt.redBold(`  ✗ SKILL DRIFT DETECTED — bundle creation refused.`));
+        console.log(fmt.dim(`    The live agent SKILL.md has diverged from the canonical repo copy.`));
+        console.log(fmt.dim(`    Run \`forge0 sync-skill --check\` to see the diff, or \`forge0 sync-skill\` to overwrite.`));
+        console.log(fmt.yellow('\n  To override: forge0 share --allow-skill-drift'));
+        process.exit(4); // Exit code 4 = skill drift detected
+      }
+    }
 
     const targetPath = opts.path ? resolve(opts.path) : process.cwd();
     const outputDir = resolve(opts.output);
@@ -300,7 +317,8 @@ program
 program
   .command('sync-skill')
   .description('Synchronize the canonical repo SKILL.md to the live Antigravity agents directory')
-  .action(() => {
+  .option('--check', 'Check for divergence without modifying files (exits 2 if divergent)')
+  .action((opts) => {
     console.log(sectionHeader('SYNC SKILL'));
     console.log();
 
@@ -315,12 +333,34 @@ program
     }
 
     try {
+      const sourceContent = readFileSync(sourcePath, 'utf-8');
+      const targetExists = existsSync(targetPath);
+      const targetContent = targetExists ? readFileSync(targetPath, 'utf-8') : null;
+
+      if (opts.check) {
+        if (sourceContent !== targetContent) {
+          console.log(fmt.redBold(`  ✗ Drift detected.`));
+          console.log(fmt.dim(`    The canonical repo SKILL.md differs from the live agent copy.`));
+          // Simple string length diff as a proxy for printing a full diff, which might be long.
+          if (targetExists) {
+            console.log(fmt.dim(`    Canonical: ${sourceContent.length} bytes`));
+            console.log(fmt.dim(`    Live:      ${targetContent!.length} bytes`));
+          } else {
+            console.log(fmt.dim(`    Live copy does not exist.`));
+          }
+          process.exit(2);
+        } else {
+          console.log(fmt.green(`  ✓ In sync.`));
+          console.log(fmt.dim(`    The live agent SKILL.md matches the canonical repo copy.`));
+          process.exit(0);
+        }
+      }
+
       if (!existsSync(targetDir)) {
         mkdirSync(targetDir, { recursive: true });
       }
       
-      const content = readFileSync(sourcePath, 'utf-8');
-      writeFileSync(targetPath, content, 'utf-8');
+      writeFileSync(targetPath, sourceContent, 'utf-8');
       
       console.log(fmt.green(`  ✓ Skill synchronized successfully.`));
       console.log(fmt.dim(`    Source: ${sourcePath}`));
