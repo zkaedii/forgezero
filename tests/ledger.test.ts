@@ -7,7 +7,9 @@ import {
   getLedgerPath,
   stableStringify,
   recordVerifyEvent,
-  recordReceiptEvent
+  recordReceiptEvent,
+  recordManualEvent,
+  selectVerifyHonesty,
 } from '../src/ledger/ledger.js';
 import { existsSync, writeFileSync, rmSync, readFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -272,6 +274,55 @@ describe('ledger record events — isolated', () => {
     // This test is mostly about side effects. 
     // We already use testRepo, so it's isolated by design.
     expect(existsSync(getLedgerPath(testRepo))).toBe(true);
+  });
+
+  it('recordManualEvent records a manual event in temp repo', () => {
+    const msg = 'Forensic note: observed CI green before tagging.';
+    const entry = recordManualEvent(testRepo, msg);
+    expect(entry.event).toBe('manual');
+    expect(entry.result).toBe('info');
+    expect(entry.summary.detail).toBe(msg);
+    expect(entry.summary.title).toContain('Manual:');
+    expect(entry.honesty.claim).toBe('Manual ledger entry recorded by operator.');
+    expect(entry.honesty.notObservable).toContain("operator's stated context");
+
+    // Hash chain extended
+    const verification = verifyLedger(testRepo);
+    expect(verification.ok).toBe(true);
+  });
+
+  it('recordVerifyEvent honesty bound is conservative without CI', () => {
+    const entry = recordVerifyEvent(testRepo, 'release');
+    expect(entry.honesty.claim).toBe(
+      'Ledger records local verification observations. It does not prove remote CI completion.'
+    );
+    expect(entry.honesty.notObservable).toContain('remote CI');
+    expect(entry.honesty.verified).not.toContain('remote CI status (point-in-time)');
+  });
+});
+
+// ─── selectVerifyHonesty Direct Tests ───────────────────────────────
+
+describe('selectVerifyHonesty — direct', () => {
+  it('returns conservative bound when CI was not checked (false, false)', () => {
+    const h = selectVerifyHonesty(false, false);
+    expect(h.claim).toContain('does not prove remote CI completion');
+    expect(h.notObservable).toContain('remote CI');
+    expect(h.verified).not.toContain('remote CI status (point-in-time)');
+  });
+
+  it('returns conservative bound when CI was checked but failed (true, false)', () => {
+    const h = selectVerifyHonesty(true, false);
+    expect(h.claim).toContain('does not prove remote CI completion');
+    expect(h.notObservable).toContain('remote CI');
+  });
+
+  it('returns strengthened bound when CI was checked and passed (true, true)', () => {
+    const h = selectVerifyHonesty(true, true);
+    expect(h.claim).toContain('including remote CI status at time of check');
+    expect(h.verified).toContain('remote CI status (point-in-time)');
+    expect(h.notObservable).toContain('future CI behavior');
+    expect(h.notObservable).not.toContain('remote CI');
   });
 });
 

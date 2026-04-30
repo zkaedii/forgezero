@@ -36,6 +36,7 @@ import {
   getLastLedgerEntry,
   recordVerifyEvent,
   recordReceiptEvent,
+  recordManualEvent,
   recordKickoffEvent,
   recordTraceEvent,
   planRelease,
@@ -814,10 +815,11 @@ const ledger = program
 ledger
   .command('record')
   .description('Record a trust event to the ledger')
-  .requiredOption('-e, --event <event>', 'Event kind (verify|receipt)')
+  .requiredOption('-e, --event <event>', 'Event kind (verify|receipt|manual)')
   .option('-m, --mode <mode>', 'Mode (for verify event)', 'release')
   .option('--remote', 'Include remote checks when recording verify event')
   .option('--ci', 'Include GitHub Actions CI checks when recording verify event')
+  .option('--message <text>', 'Message text (required for manual event)')
   .option('--json', 'Emit JSON instead of formatted text')
   .action((opts) => {
     const repoRoot = process.cwd();
@@ -827,6 +829,12 @@ ledger
       entry = recordVerifyEvent(repoRoot, opts.mode as any, pkgVersion, { remote: !!opts.remote, ci: !!opts.ci });
     } else if (opts.event === 'receipt') {
       entry = recordReceiptEvent(repoRoot, pkgVersion);
+    } else if (opts.event === 'manual') {
+      if (!opts.message) {
+        console.error(fmt.redBold(`\u2717 --message is required for manual events.`));
+        process.exit(1);
+      }
+      entry = recordManualEvent(repoRoot, opts.message, pkgVersion);
     } else {
       console.error(fmt.redBold(`\u2717 Unknown event kind: ${opts.event}`));
       process.exit(1);

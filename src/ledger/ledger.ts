@@ -241,6 +241,10 @@ export function recordVerifyEvent(
 ): LedgerEntry {
   const result = runVerify(repoRoot, mode, cliVersion, opts);
 
+  const ciChecked = opts.ci === true;
+  const ciPassed = ciChecked && result.checks.some(c => c.id === 'ci.status' && c.passed);
+  const honesty = selectVerifyHonesty(ciChecked, ciPassed);
+
   return appendLedgerEntry(repoRoot, {
     event: 'verify',
     mode,
@@ -260,11 +264,7 @@ export function recordVerifyEvent(
       detail: c.detail,
       severity: c.severity,
     })),
-    honesty: {
-      claim: 'Ledger records local verification observations. It does not prove remote CI completion.',
-      verified: ['local repository state', 'verification gates'],
-      notObservable: ['remote CI', 'runtime agent behavior'],
-    },
+    honesty,
     sourceCommand: `forge0 verify --mode ${mode}${opts.remote ? ' --remote' : ''}${opts.ci ? ' --ci' : ''}`,
   }, cliVersion);
 }
@@ -291,6 +291,61 @@ export function recordReceiptEvent(repoRoot: string, cliVersion?: string): Ledge
     })),
     honesty: receipt.honesty,
     sourceCommand: 'forge0 receipt',
+  }, cliVersion);
+}
+
+// ─── Honesty Bound Selection ────────────────────────────────────────
+
+/**
+ * selectVerifyHonesty — pure helper that selects the honesty bound
+ * for a verify ledger event based on CI observation state.
+ *
+ * Keyed to ci.status check passing, NOT overall result.success.
+ * When HYGIENE-008's annotated-tag check fails but CI was observed,
+ * the honesty bound still reflects ci-was-checked-and-passed.
+ */
+export function selectVerifyHonesty(
+  ciChecked: boolean,
+  ciPassed: boolean
+): { claim: string; verified: string[]; notObservable: string[] } {
+  if (ciChecked && ciPassed) {
+    return {
+      claim: 'Ledger records local verification observations including remote CI status at time of check.',
+      verified: ['local repository state', 'verification gates', 'remote CI status (point-in-time)'],
+      notObservable: ['future CI behavior', 'runtime agent behavior'],
+    };
+  }
+  return {
+    claim: 'Ledger records local verification observations. It does not prove remote CI completion.',
+    verified: ['local repository state', 'verification gates'],
+    notObservable: ['remote CI', 'runtime agent behavior'],
+  };
+}
+
+export function recordManualEvent(
+  repoRoot: string,
+  message: string,
+  cliVersion?: string
+): LedgerEntry {
+  const truncatedTitle = message.length > 60 ? message.slice(0, 60) + '…' : message;
+
+  return appendLedgerEntry(repoRoot, {
+    event: 'manual',
+    result: 'info',
+    summary: {
+      title: `Manual: ${truncatedTitle}`,
+      detail: message,
+      passedChecks: 0,
+      failedChecks: 0,
+      warningChecks: 0,
+    },
+    checks: [],
+    honesty: {
+      claim: 'Manual ledger entry recorded by operator.',
+      verified: [],
+      notObservable: ["operator's stated context", 'external state at time of recording'],
+    },
+    sourceCommand: 'forge0 ledger record --event manual',
   }, cliVersion);
 }
 
