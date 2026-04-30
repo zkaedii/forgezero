@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.2] - 2026-04-30
+
+### Fixed
+
+- **HYGIENE-FORGE-006** — Kickoff and trace ledger entries now include the full session UUID in `summary.title` rather than truncating to the first 8 characters. Cross-event correlation in `forge0 ledger list` no longer requires manual UUID expansion.
+- **HYGIENE-FORGE-007** — Three `opts.* as any` casts in `bin/forge0.ts` replaced with commander's `.choices()` validation pattern at parse time. Typed helpers `asVerifyMode()` and `asBumpType()` narrow commander's string output to the relevant union types. Invalid `--mode` and `--bump` values now error at parse time with a clear error message.
+- **HYGIENE-FORGE-011** — Integration test for `runVerify --remote` against an annotated tag, locking in both halves of v0.2.1's HYGIENE-008 fix (the `parseLsRemoteHash` peeled-ref preference AND the dual-pattern `git ls-remote` command). Future regressions to either fix will fail the integration test.
+
+### Changed
+
+- **HYGIENE-FORGE-012** — `LedgerEventKind` partitioned into `IMPLEMENTED_LEDGER_EVENT_KINDS` (`verify`, `receipt`, `kickoff`, `trace`, `manual`) and `PLANNED_LEDGER_EVENT_KINDS` (`doctor`, `status`, `hook-install`, `bundle`). The four planned kinds had no recorders or CLI surfaces; they are now documented in `docs/roadmap.md` as v0.3.x reservations and not accepted by the production ledger schema until first-class implementations exist.
+
+### Added
+
+- New shared test helper module `tests/helpers/temp-git-repo.ts` containing `createTempGitRepo` (migrated from `tests/ledger.test.ts`) and `createTempGitRepoWithRemoteAndAnnotatedTag` for integration tests needing a full git remote setup.
+- New `docs/roadmap.md` documenting planned ledger event kinds and the promotion protocol.
+
+### Behavior change
+
+- `forge0 ledger record --event manual --mode invalid` (or with any irrelevant `--mode` value) now errors at parse time instead of silently ignoring the flag. Same applies to other verify-mode and bump-type validations. This is a strictness-over-backward-compat trade-off for cleaner CLI semantics.
+
+### Notes
+
+- 202/202 tests passing (192 existing + 10 new).
+- No new dependencies.
+- Hygiene tickets HYGIENE-FORGE-013 (temp-git-repo helper error handling for partial-failure cleanup) and HYGIENE-FORGE-014 (audit `runVerify` for `process.cwd()` leaks into integration tests) filed for v0.3.0.
+
 ## [0.2.1] - 2026-04-30
 
 ### Fixed
