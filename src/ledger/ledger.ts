@@ -359,7 +359,7 @@ export function recordKickoffEvent(
     mode: opts.mode,
     result: 'info',
     summary: {
-      title: `Kickoff session ${opts.sessionId.slice(0, 8)}`,
+      title: `Kickoff session ${opts.sessionId}`,
       detail: `Mode: ${opts.mode}, policy hash: ${opts.policySha256?.slice(0, 8) ?? 'default'}`,
       passedChecks: 0,
       failedChecks: 0,
@@ -387,7 +387,7 @@ export function recordTraceEvent(
     event: 'trace',
     result,
     summary: {
-      title: `Trace ${opts.sessionId.slice(0, 8)}: ${opts.tag}`,
+      title: `Trace ${opts.sessionId}: ${opts.tag}`,
       detail: `Exit code: ${opts.exitCode}`,
       passedChecks: opts.exitCode === 0 ? 1 : 0,
       failedChecks: opts.exitCode > 0 ? 1 : 0,

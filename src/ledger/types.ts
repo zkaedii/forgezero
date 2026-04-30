@@ -3,16 +3,35 @@
  * Defines the schema for local, hash-chained operational trust history.
  */
 
-export type LedgerEventKind =
-  | 'verify'
-  | 'receipt'
-  | 'doctor'
-  | 'status'
-  | 'hook-install'
-  | 'bundle'
-  | 'kickoff'
-  | 'trace'
-  | 'manual';
+export const IMPLEMENTED_LEDGER_EVENT_KINDS = [
+  'verify',
+  'receipt',
+  'kickoff',
+  'trace',
+  'manual',
+] as const;
+
+export type LedgerEventKind = typeof IMPLEMENTED_LEDGER_EVENT_KINDS[number];
+
+/**
+ * Planned ledger event kinds, reserved for v0.3.x but NOT accepted by the
+ * production ledger schema until first-class recorders, CLI surfaces, tests,
+ * and honesty bounds exist for them.
+ *
+ * To promote a kind from planned to implemented:
+ *   1. Implement recordXEvent() in src/ledger/ledger.ts
+ *   2. Add CLI surface in bin/forge0.ts (if applicable — kickoff/trace are auto-recorders)
+ *   3. Add tests in tests/ledger.test.ts
+ *   4. Move the value from PLANNED_LEDGER_EVENT_KINDS to IMPLEMENTED_LEDGER_EVENT_KINDS
+ */
+export const PLANNED_LEDGER_EVENT_KINDS = [
+  'doctor',
+  'status',
+  'hook-install',
+  'bundle',
+] as const;
+
+export type PlannedLedgerEventKind = typeof PLANNED_LEDGER_EVENT_KINDS[number];
 
 export type LedgerEventResult = 'pass' | 'fail' | 'warn' | 'info';
 
