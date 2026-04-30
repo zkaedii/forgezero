@@ -13,7 +13,7 @@
  *   forge0 install-hook    — Install git hook for pre-commit auditing
  */
 
-import { Command } from 'commander';
+import { Command, Option } from 'commander';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import {
@@ -49,6 +49,18 @@ import {
   formatConfidence,
 } from '../src/index.js';
 import type { KickoffMode } from '../src/kickoff/types.js';
+import type { VerifyMode } from '../src/verify/types.js';
+import type { BumpType } from '../src/release/types.js';
+
+/** Narrow commander string to VerifyMode. Commander .choices() guarantees validity at runtime. */
+function asVerifyMode(s: string): VerifyMode {
+  return s as VerifyMode;
+}
+
+/** Narrow commander string to BumpType. Commander .choices() guarantees validity at runtime. */
+function asBumpType(s: string): BumpType {
+  return s as BumpType;
+}
 
 const program = new Command();
 
@@ -816,7 +828,7 @@ ledger
   .command('record')
   .description('Record a trust event to the ledger')
   .requiredOption('-e, --event <event>', 'Event kind (verify|receipt|manual)')
-  .option('-m, --mode <mode>', 'Mode (for verify event)', 'release')
+  .addOption(new Option('-m, --mode <mode>', 'Mode (for verify event)').default('release').choices(['precommit', 'release', 'bundle']))
   .option('--remote', 'Include remote checks when recording verify event')
   .option('--ci', 'Include GitHub Actions CI checks when recording verify event')
   .option('--message <text>', 'Message text (required for manual event)')
@@ -826,7 +838,7 @@ ledger
     let entry;
 
     if (opts.event === 'verify') {
-      entry = recordVerifyEvent(repoRoot, opts.mode as any, pkgVersion, { remote: !!opts.remote, ci: !!opts.ci });
+      entry = recordVerifyEvent(repoRoot, asVerifyMode(opts.mode), pkgVersion, { remote: !!opts.remote, ci: !!opts.ci });
     } else if (opts.event === 'receipt') {
       entry = recordReceiptEvent(repoRoot, pkgVersion);
     } else if (opts.event === 'manual') {
@@ -975,12 +987,12 @@ ledger
 program
   .command('verify')
   .description('Enforce trust criteria — precommit, release, or bundle modes')
-  .option('-m, --mode <mode>', 'Verification mode (precommit|release|bundle)', 'release')
+  .addOption(new Option('-m, --mode <mode>', 'Verification mode (precommit|release|bundle)').default('release').choices(['precommit', 'release', 'bundle']))
   .option('--remote', 'Include origin branch/tag synchronization checks')
   .option('--ci', 'Include GitHub Actions CI checks')
   .option('--json', 'Emit JSON instead of formatted text')
   .action((opts) => {
-    const mode = opts.mode as any;
+    const mode = asVerifyMode(opts.mode);
     const report = runVerify(process.cwd(), mode, pkgVersion, { remote: !!opts.remote, ci: !!opts.ci });
 
     if (opts.json) {
@@ -1114,17 +1126,14 @@ program
 program
   .command('release')
   .description('Safely orchestrate the release checklist and seal the trust loop')
-  .option('--bump <type>', 'Version bump type (patch, minor, major, none)', 'none')
+  .addOption(new Option('--bump <type>', 'Version bump type (patch, minor, major, none)').default('none').choices(['patch', 'minor', 'major', 'none']))
   .option('--verify-remote', 'Include remote origin synchronization check')
   .option('--verify-ci', 'Include GitHub Actions CI check')
   .option('--dry-run', 'Plan and preview the release without executing commands')
   .option('--json', 'Emit JSON instead of formatted text')
   .action((opts) => {
-    const validBumps = ['patch', 'minor', 'major', 'none'] as const;
-    const bumpType = validBumps.includes(opts.bump) ? opts.bump : 'none';
-
     const plan = planRelease(process.cwd(), {
-      versionType: bumpType as any,
+      versionType: asBumpType(opts.bump),
       verifyRemote: !!opts.verifyRemote,
       verifyCi: !!opts.verifyCi,
       dryRun: !!opts.dryRun,
