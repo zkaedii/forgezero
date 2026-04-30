@@ -1,6 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { runVerify, parseLsRemoteHash, parseAheadBehind, parseGhRuns, summarizeCiRuns } from '../src/verify/verify.js';
-import { resolve } from 'node:path';
+import { resolve, join } from 'node:path';
+import { existsSync, rmSync } from 'node:fs';
+import { execSync } from 'node:child_process';
+import { createTempGitRepoWithRemoteAndAnnotatedTag } from './helpers/temp-git-repo.js';
 
 const REPO_ROOT = resolve(process.cwd());
 
@@ -92,4 +95,39 @@ describe('runVerify', () => {
     expect(result.score).toBe(expectedScore);
   });
 
+});
+
+// ─── HYGIENE-011 Remote Integration Tests ───────────────────────────
+
+describe('runVerify — remote integration', () => {
+  it('runVerify --remote against annotated tag returns matching remote.tag_at_head', () => {
+    const { repoRoot, cleanup } = createTempGitRepoWithRemoteAndAnnotatedTag('0.0.1');
+    try {
+      const result = runVerify(repoRoot, 'release', '0.0.1', { remote: true });
+      const tagCheck = result.checks.find(c => c.id === 'remote.tag_at_head');
+      expect(tagCheck).toBeDefined();
+      expect(tagCheck!.passed).toBe(true);
+      expect(tagCheck!.detail).toContain('Synchronization confirmed.');
+    } finally {
+      cleanup();
+    }
+  });
+});
+
+// ─── HYGIENE-007 CLI Rejection Tests ────────────────────────────────
+
+describe('verify CLI choices rejection', () => {
+  it('forge0 verify --mode invalid rejects with exit code 1', () => {
+    const tsxPath = join(process.cwd(), 'node_modules/tsx/dist/cli.mjs');
+    let exitCode = 0;
+    try {
+      execSync(
+        `"${process.execPath}" "${tsxPath}" "${join(process.cwd(), 'bin/forge0.ts')}" verify --mode invalid`,
+        { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }
+      );
+    } catch (err: any) {
+      exitCode = err.status ?? 1;
+    }
+    expect(exitCode).not.toBe(0);
+  });
 });

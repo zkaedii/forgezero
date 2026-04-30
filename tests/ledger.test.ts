@@ -9,35 +9,20 @@ import {
   recordVerifyEvent,
   recordReceiptEvent,
   recordManualEvent,
+  recordKickoffEvent,
+  recordTraceEvent,
   selectVerifyHonesty,
 } from '../src/ledger/ledger.js';
+import {
+  IMPLEMENTED_LEDGER_EVENT_KINDS,
+  PLANNED_LEDGER_EVENT_KINDS,
+} from '../src/ledger/types.js';
 import { existsSync, writeFileSync, rmSync, readFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { mkdtempSync } from 'node:fs';
 import { execSync } from 'node:child_process';
-
-// ─── Helpers ────────────────────────────────────────────────────────
-
-/**
- * Create a minimal temp git repo with package.json, package-lock.json,
- * and CHANGELOG.md so recordVerifyEvent/recordReceiptEvent can resolve
- * version metadata and trust report without touching the real repo.
- */
-function createTempGitRepo(version = '0.0.1'): string {
-  const dir = mkdtempSync(join(tmpdir(), 'forge0-ledger-test-'));
-  execSync('git init', { cwd: dir, stdio: 'pipe' });
-  execSync('git config user.email "test@test.com"', { cwd: dir, stdio: 'pipe' });
-  execSync('git config user.name "test"', { cwd: dir, stdio: 'pipe' });
-  writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'test', version }));
-  writeFileSync(join(dir, 'package-lock.json'), JSON.stringify({
-    name: 'test', version, lockfileVersion: 3, packages: { '': { version } }
-  }));
-  writeFileSync(join(dir, 'CHANGELOG.md'), `# Changelog\n\n## [${version}]\n\n- test\n`);
-  execSync('git add -A', { cwd: dir, stdio: 'pipe' });
-  execSync('git commit -m "init"', { cwd: dir, stdio: 'pipe' });
-  return dir;
-}
+import { createTempGitRepo } from './helpers/temp-git-repo.js';
 
 // ─── Pure Engine Tests (temp dir, no git) ───────────────────────────
 
@@ -397,5 +382,102 @@ describe('ledger CLI JSON', () => {
     } finally {
       rmSync(emptyDir, { recursive: true, force: true });
     }
+  });
+});
+
+// ─── HYGIENE-006 Recorder Tests ─────────────────────────────────────
+
+describe('ledger record events — kickoff and trace recorders', () => {
+  let testRepo: string;
+
+  beforeEach(() => {
+    testRepo = createTempGitRepo('0.8.8');
+  });
+
+  afterEach(() => {
+    if (existsSync(testRepo)) {
+      rmSync(testRepo, { recursive: true, force: true });
+    }
+  });
+
+  it('recordKickoffEvent records a kickoff event with full sessionId in title', () => {
+    const sessionId = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+    const entry = recordKickoffEvent(testRepo, {
+      mode: 'full',
+      sessionId,
+      policySha256: null,
+      decision: 'observables',
+    });
+    expect(entry.event).toBe('kickoff');
+    expect(entry.summary.title).toBe(`Kickoff session ${sessionId}`);
+    expect(entry.summary.title).toContain(sessionId);
+    // Hash chain extended
+    const verification = verifyLedger(testRepo);
+    expect(verification.ok).toBe(true);
+  });
+
+  it('recordTraceEvent records a trace event with full sessionId in title', () => {
+    const sessionId = 'b2c3d4e5-f6a7-8901-bcde-f12345678901';
+    const tag = 'clean-session';
+    const entry = recordTraceEvent(testRepo, {
+      sessionId,
+      tag,
+      exitCode: 0,
+    });
+    expect(entry.event).toBe('trace');
+    expect(entry.summary.title).toBe(`Trace ${sessionId}: ${tag}`);
+    expect(entry.summary.title).toContain(sessionId);
+    // Hash chain extended
+    const verification = verifyLedger(testRepo);
+    expect(verification.ok).toBe(true);
+  });
+});
+
+// ─── HYGIENE-012 Parity Tests ───────────────────────────────────────
+
+describe('LedgerEventKind parity', () => {
+  it('IMPLEMENTED_LEDGER_EVENT_KINDS contains exactly the implemented event kinds', () => {
+    expect([...IMPLEMENTED_LEDGER_EVENT_KINDS]).toEqual([
+      'verify',
+      'receipt',
+      'kickoff',
+      'trace',
+      'manual',
+    ]);
+  });
+
+  it('PLANNED_LEDGER_EVENT_KINDS contains exactly the documented planned kinds', () => {
+    expect([...PLANNED_LEDGER_EVENT_KINDS]).toEqual([
+      'doctor',
+      'status',
+      'hook-install',
+      'bundle',
+    ]);
+  });
+
+  it('every implemented LedgerEventKind has a recorder function', () => {
+    expect(typeof recordVerifyEvent).toBe('function');
+    expect(typeof recordReceiptEvent).toBe('function');
+    expect(typeof recordManualEvent).toBe('function');
+    expect(typeof recordKickoffEvent).toBe('function');
+    expect(typeof recordTraceEvent).toBe('function');
+  });
+});
+
+// ─── HYGIENE-007 CLI Rejection Tests ────────────────────────────────
+
+describe('ledger record CLI choices rejection', () => {
+  it('forge0 ledger record --event verify --mode invalid rejects with exit code 1', () => {
+    const tsxPath = join(process.cwd(), 'node_modules/tsx/dist/cli.mjs');
+    let exitCode = 0;
+    try {
+      execSync(
+        `"${process.execPath}" "${tsxPath}" "${join(process.cwd(), 'bin/forge0.ts')}" ledger record --event verify --mode invalid`,
+        { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }
+      );
+    } catch (err: any) {
+      exitCode = err.status ?? 1;
+    }
+    expect(exitCode).not.toBe(0);
   });
 });
