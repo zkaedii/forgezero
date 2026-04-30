@@ -3,7 +3,8 @@
 Governance and provenance CLI for Antigravity `.agents/` surface.
 
 [![tests](https://img.shields.io/badge/tests-passing-green)](./tests)
-[![version](https://img.shields.io/badge/version-0.1.12-blue)](./package.json)
+<!-- TODO: bump to 0.2.0 after operator tags v0.2.0 -->
+[![version](https://img.shields.io/badge/version-0.1.16-blue)](./package.json)
 [![license](https://img.shields.io/badge/license-MIT-yellow)](./LICENSE)
 
 > **The honesty bound is load-bearing.** ForgeZero never claims to detect
@@ -60,13 +61,13 @@ forge0 ledger record --event verify --mode release --remote --ci # record trust 
 | `ledger list` | Show recorded trust events | 0 = success |
 | `ledger last` | Show the latest trust event | 0 = success |
 | `ledger verify` | Verify ledger hash-chain integrity | 0 = pass / 1 = fail |
-| `trace <id>` | [v0.2.0 — not implemented] | 0 stub |
+| `kickoff [--mode m] [--explain]` | Start a verifiable session observability lifecycle | 0 = success |
+| `trace <id>` | Audit a kickoff session against current disk state | 0 = pass / 1 = integrity fail / 2 = mismatch |
 
 ## Lifecycle
 
 ```text
-status → doctor → verify → receipt → ledger
-observe → recover → enforce → attest → remember
+status → doctor → kickoff → verify → receipt → ledger → trace
 ```
 
 `forge0 verify --mode release --remote` checks that local release truth matches `origin`. Use this after pushing the release tag to confirm `origin/master` and `origin/vX.Y.Z` point to the local release commit.
@@ -78,6 +79,10 @@ observe → recover → enforce → attest → remember
 The ledger records local ForgeZero observations. It is tamper-evident, not tamper-proof.
 It does not prove remote CI completion, downstream tag consumption, hidden model context,
 or runtime agent behavior.
+
+### Kickoff downgrade-attack resistance
+
+ForgeZero uses an auto-mode router to select between `full` and `minimal` session modes. Mode selection relies exclusively on independent, disk-based observables like branch names, paths touched, and CI status. The agent's stated intent is never the deciding signal. This fail-closed design ensures an adversarial witness cannot downgrade its observability tier by falsely claiming low-risk intent. Overrides via the CLI are rejected if the observables cannot verify safety.
 
 ## What ForgeZero will NOT do
 

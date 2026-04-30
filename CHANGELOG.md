@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2026-04-30
+
+### Added
+- `forge0 kickoff` command with an auto-mode router, verbatim prompt template generation, and atomic dump writing.
+- `forge0 trace` command supporting all 8 trace tags with explicit precedence evaluation (NOT_OBSERVED, TRACE_INTEGRITY_FAILURE, MODE_MISMATCH, etc.).
+- Fail-closed adversarial intent classifier and policy file substrate (`.forge0/policy.json`).
+- Universal skill registry merkle baseline integration.
+- `kickoff` and `trace` trust events integrated into the hash-chained `forge0 ledger`.
+
 ## [0.1.16] - 2026-04-29
 
 ### Added

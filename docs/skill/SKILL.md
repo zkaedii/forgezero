@@ -1,6 +1,6 @@
 ---
 name: forgezero
-description: Governance and provenance CLI for Antigravity .agents/ surface. Use when the user is about to merge a PR touching .agents/, asks "what influenced this conversation," wants to share team configs without leaking secrets, or asks for a decision lineage for a specific session ID. Provides three commands — audit (git diff with semantic classification), provenance (lower-bound skill/KI detection from overview.txt), and share (secret-scrubbed bundle creation).
+description: Governance and provenance CLI for Antigravity .agents/ surface. Use when the user is about to merge a PR touching .agents/, asks "what influenced this conversation," wants to share team configs without leaking secrets, or asks for a decision lineage for a specific session ID. Provides full lifecycle commands: status, doctor, kickoff, audit, verify, provenance, share, receipt, ledger, and trace.
 ---
 
 # ForgeZero — When to Invoke
@@ -37,6 +37,6 @@ Refuses with exit 4 if live SKILL.md drifted from repo. On exit 4, surface the d
 NEVER suggest `--allow-secrets` or `--allow-skill-drift` unprompted.
 
 ## Hard prohibitions
-- Do not invent flags. The five real subcommands are: audit, provenance, share, selftest, sync-skill.
+- Do not invent flags. The real subcommands are: status, doctor, kickoff, audit, verify, provenance, share, receipt, ledger, selftest, sync-skill, and trace.
 - Do not promise detection completeness. The honesty bound is load-bearing.
 - Do not run `share` without explicit user request — bundle creation is destructive-feeling for users who don't expect it.
