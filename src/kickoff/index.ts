@@ -1,0 +1,10 @@
+export type { KickoffMode, KickoffDump, AgentDump, ModeDecision, ModeSignal, Policy, RegistryMerkle, KickoffOptions, KickoffResult } from './types.js';
+export { defaultPolicy, loadPolicy, validatePolicy } from './policy.js';
+export { computeRegistryMerkle } from './registry.js';
+export { matchesAny } from './glob-match.js';
+export { decideMode } from './router.js';
+export type { DecideModeOpts } from './router.js';
+export { generateKickoffPrompt } from './prompt.js';
+export { writeKickoffDump } from './dump.js';
+export { runKickoff } from './kickoff.js';
+export type { RunKickoffOpts } from './kickoff.js';

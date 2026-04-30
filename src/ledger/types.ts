@@ -10,6 +10,8 @@ export type LedgerEventKind =
   | 'status'
   | 'hook-install'
   | 'bundle'
+  | 'kickoff'
+  | 'trace'
   | 'manual';
 
 export type LedgerEventResult = 'pass' | 'fail' | 'warn' | 'info';

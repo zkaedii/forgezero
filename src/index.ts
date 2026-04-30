@@ -26,3 +26,5 @@ export * from './ledger/types.js';
 export * from './ledger/ledger.js';
 export * from './release/types.js';
 export * from './release/release.js';
+export * from './kickoff/index.js';
+export * from './trace/index.js';

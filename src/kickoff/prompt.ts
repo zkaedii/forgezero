@@ -1,0 +1,61 @@
+/**
+ * generateKickoffPrompt — returns the verbatim kickoff prompt template
+ * from spec §8 with <UUID> substituted at every occurrence.
+ *
+ * In minimal mode, no prompt is emitted (caller decides).
+ * This function always returns the full-mode prompt.
+ */
+export function generateKickoffPrompt(uuid: string): string {
+  return `[FORGEZERO KICKOFF — session ${uuid}]
+
+Before any other work in this session, perform the following provenance dump.
+This is a one-time setup step; the user has already verified its content.
+
+Output path:    .forge0/sessions/${uuid}.agent.json
+Schema version: 1
+
+Steps, in order:
+
+1. Read the literal text of the <available_skills> block (or whichever
+   skill-availability section was injected at session start). If you only see
+   partial content, record that in honesty_notes — do NOT fabricate.
+
+2. Using a tool (bash sha256sum, Node crypto, Python hashlib — not estimation),
+   compute the SHA-256 of the raw UTF-8 bytes of that block. Lowercase hex.
+
+3. Parse the block to extract skill slugs (the <name>X</name> values, or
+   equivalent). If the block uses a different format, leave skill_slugs empty
+   and preserve the raw text only.
+
+4. Write this JSON to .forge0/sessions/${uuid}.agent.tmp, then rename to
+   .forge0/sessions/${uuid}.agent.json. Atomic — do not skip the rename.
+
+   {
+     "schema_version": 1,
+     "session_id": "${uuid}",
+     "timestamp_iso": "<current UTC ISO-8601, second precision>",
+     "agent_self_id": "<model identifier as you understand it>",
+     "model": "<model version>",
+     "conversation_id": "<conversation ID if available, else empty string>",
+     "available_skills_block": "<step 1 output, JSON-escaped>",
+     "available_skills_block_sha256": "<step 2 hex>",
+     "skill_slugs": [<step 3 slugs, sorted lexicographically>],
+     "honesty_notes": "<partial visibility, restrictions, anything you cannot
+                      verbatim-quote — empty string if none>"
+   }
+
+5. Reply with exactly one line first: "ForgeZero kickoff dump written: ${uuid}".
+   Then proceed with the user's request.
+
+Constraints:
+- BEFORE any other tool calls. Not after partial work.
+- The hash input is the raw block bytes from step 1, not the JSON-escaped form.
+- If .forge0/sessions/ does not exist, mkdir -p it. If you cannot write at
+  all, say so explicitly and STOP. Do not improvise an alternate path.
+- If your <available_skills> block is not visible to you, write the file with
+  an empty block and honesty_notes explaining the limitation. Do not list
+  skills from memory.
+
+[END KICKOFF]
+`;
+}

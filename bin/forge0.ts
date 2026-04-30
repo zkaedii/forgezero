@@ -36,12 +36,18 @@ import {
   getLastLedgerEntry,
   recordVerifyEvent,
   recordReceiptEvent,
+  recordKickoffEvent,
+  recordTraceEvent,
   planRelease,
+  runKickoff,
+  generateKickoffPrompt,
+  runTrace,
   fmt,
   sectionHeader,
   formatChangeType,
   formatConfidence,
 } from '../src/index.js';
+import type { KickoffMode } from '../src/kickoff/types.js';
 
 const program = new Command();
 
@@ -417,27 +423,145 @@ program
     }
   });
 
-// ─── forge0 trace (v0.2.0 Stub) ──────────────────────────────────────
+// ─── forge0 kickoff ───────────────────────────────────────────────────
 
 program
-  .command('trace <conversation-id>')
-  .description('[v0.2.0 — NOT IMPLEMENTED] Capture system-prompt-injected skill loads')
-  .action((conversationId: string) => {
-    console.log(sectionHeader('TRACE — NOT IMPLEMENTED'));
+  .command('kickoff')
+  .description('Start a session with observable-derived mode selection and provenance capture')
+  .option('--mode <mode>', 'Mode: auto, full, minimal', 'auto')
+  .option('--explain', 'Show mode decision without writing dump')
+  .option('--intent <intent>', 'Agent-claimed intent (recorded, never deciding)')
+  .option('--out <path>', 'Override dump output path')
+  .option('--json', 'Emit JSON instead of formatted text')
+  .action((opts) => {
+    const repoRoot = process.cwd();
+    const mode = opts.mode as KickoffMode;
+
+    const result = runKickoff({
+      repoRoot,
+      mode,
+      intent: opts.intent ?? process.env.FORGE0_INTENT,
+      explain: !!opts.explain,
+      out: opts.out,
+    });
+
+    if (opts.explain) {
+      if (opts.json) {
+        process.stdout.write(JSON.stringify(result.mode_decision, null, 2) + '\n');
+      } else {
+        console.log(sectionHeader('KICKOFF — EXPLAIN'));
+        console.log();
+        console.log(`  ${fmt.bold('Resolved mode:')} ${result.mode}`);
+        console.log(`  ${fmt.dim('Selected by:')}   ${result.mode_decision.selected_by}`);
+        if (result.mode_decision.cli_override_rejected) {
+          console.log(`  ${fmt.yellow('⚠')} CLI override --mode minimal was ${fmt.redBold('REJECTED')} by observables`);
+        }
+        console.log();
+        console.log(fmt.bold('  Evidence:'));
+        for (const sig of result.mode_decision.evidence) {
+          const icon = sig.verdict === 'high_risk' ? fmt.redBold('✗') :
+                       sig.verdict === 'low_risk' ? fmt.green('✓') :
+                       fmt.dim('○');
+          const ruleStr = sig.rule ? fmt.dim(` (${sig.rule})`) : '';
+          console.log(`    ${icon} ${sig.signal}: ${sig.verdict}${ruleStr}`);
+        }
+      }
+      process.exit(0);
+    }
+
+    // Record ledger event
+    try {
+      recordKickoffEvent(repoRoot, {
+        mode: result.mode,
+        sessionId: result.session_id,
+        policySha256: result.mode_decision.policy_sha256,
+        decision: result.mode_decision.selected_by,
+      }, pkgVersion);
+    } catch {
+      // Ledger recording failure is non-fatal for kickoff
+    }
+
+    if (opts.json) {
+      process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+      process.exit(0);
+    }
+
+    console.log(sectionHeader('KICKOFF'));
     console.log();
-    console.log(fmt.yellow('  ⚠ forge0 trace is reserved for v0.2.0 and not yet implemented.'));
+    console.log(`  ${fmt.bold('Session:')}  ${result.session_id}`);
+    console.log(`  ${fmt.bold('Mode:')}     ${result.mode}`);
+    console.log(`  ${fmt.dim('Dump:')}     ${result.dump_path}`);
+    console.log(`  ${fmt.dim('Decision:')} ${result.mode_decision.selected_by}`);
     console.log();
-    console.log(fmt.dim('  The v0.2.0 thesis ([VERIFIED] via session 4cc0e9e2) states:'));
-    console.log(fmt.dim('  "Antigravity skill-load events are not durably recorded in any'));
-    console.log(fmt.dim('   user-readable file. Every governance tool built on this surface'));
-    console.log(fmt.dim('   produces lower-bound provenance reports until the trace problem'));
-    console.log(fmt.dim('   is solved."'));
-    console.log();
-    console.log(fmt.dim('  See: docs/v0.2.0-thesis.md'));
-    console.log(fmt.dim('  Until v0.2.0 ships, use:'));
-    console.log(`     ${fmt.cyan(`forge0 provenance ${conversationId}`)}`);
-    console.log(fmt.dim('  for the v0.1.x [DETECTED_WHEN_EXPLICIT] lower bound.'));
+
+    // In full mode, emit the kickoff prompt
+    if (result.mode === 'full') {
+      console.log(fmt.dim('  --- Kickoff Prompt (copy to agent) ---'));
+      console.log();
+      console.log(generateKickoffPrompt(result.session_id));
+    } else {
+      console.log(fmt.dim('  Minimal mode — no agent prompt emitted.'));
+    }
+
     process.exit(0);
+  });
+
+// ─── forge0 trace ───────────────────────────────────────────────────────
+
+program
+  .command('trace <session-id>')
+  .description('Audit a kickoff session against current disk state')
+  .option('--json', 'Emit JSON instead of formatted text')
+  .action((sessionId: string, opts: { json?: boolean }) => {
+    const repoRoot = process.cwd();
+    const result = runTrace(sessionId, repoRoot);
+
+    // Record ledger event
+    try {
+      recordTraceEvent(repoRoot, {
+        sessionId,
+        tag: result.tag,
+        exitCode: result.exit_code,
+      }, pkgVersion);
+    } catch {
+      // Ledger recording failure is non-fatal for trace
+    }
+
+    if (opts.json) {
+      process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+      process.exit(result.exit_code);
+    }
+
+    console.log(sectionHeader('TRACE'));
+    console.log();
+    console.log(`  ${fmt.bold('Session:')}   ${result.session_id}`);
+    const tagColor = result.exit_code === 0 ? fmt.green :
+                     result.exit_code === 1 ? fmt.redBold :
+                     fmt.yellow;
+    console.log(`  ${fmt.bold('Tag:')}       ${tagColor(result.tag)}`);
+    console.log(`  ${fmt.bold('Exit code:')} ${result.exit_code}`);
+    console.log(`  ${fmt.dim('Detail:')}    ${result.detail}`);
+
+    if (result.payload) {
+      console.log();
+      console.log(fmt.bold('  Payload:'));
+      for (const [key, val] of Object.entries(result.payload)) {
+        const display = Array.isArray(val) ? val.join(', ') : String(val);
+        console.log(`    ${fmt.dim(key + ':')} ${display}`);
+      }
+    }
+
+    // Honesty bound
+    console.log();
+    console.log(fmt.dim('  Honesty bound:'));
+    for (const v of result.honesty.verified) {
+      console.log(fmt.dim(`    ✓ ${v}`));
+    }
+    for (const n of result.honesty.notObservable) {
+      console.log(fmt.dim(`    ⚠ (not observable) ${n}`));
+    }
+
+    process.exit(result.exit_code);
   });
 
 // ─── forge0 install-hook ────────────────────────────────────────────

@@ -293,3 +293,57 @@ export function recordReceiptEvent(repoRoot: string, cliVersion?: string): Ledge
     sourceCommand: 'forge0 receipt',
   }, cliVersion);
 }
+
+export function recordKickoffEvent(
+  repoRoot: string,
+  opts: { mode: string; sessionId: string; policySha256: string | null; decision: string },
+  cliVersion?: string
+): LedgerEntry {
+  return appendLedgerEntry(repoRoot, {
+    event: 'kickoff',
+    mode: opts.mode,
+    result: 'info',
+    summary: {
+      title: `Kickoff session ${opts.sessionId.slice(0, 8)}`,
+      detail: `Mode: ${opts.mode}, policy hash: ${opts.policySha256?.slice(0, 8) ?? 'default'}`,
+      passedChecks: 0,
+      failedChecks: 0,
+      warningChecks: 0,
+    },
+    checks: [],
+    honesty: {
+      claim: 'Kickoff ledger event records session start with resolved mode.',
+      verified: ['session mode', 'policy hash'],
+      notObservable: ['agent runtime behavior', 'future session drift'],
+    },
+    sourceCommand: `forge0 kickoff --mode ${opts.mode}`,
+  }, cliVersion);
+}
+
+export function recordTraceEvent(
+  repoRoot: string,
+  opts: { sessionId: string; tag: string; exitCode: number },
+  cliVersion?: string
+): LedgerEntry {
+  const result = opts.exitCode === 0 ? 'info' as const :
+                 opts.exitCode === 1 ? 'fail' as const :
+                 'warn' as const;
+  return appendLedgerEntry(repoRoot, {
+    event: 'trace',
+    result,
+    summary: {
+      title: `Trace ${opts.sessionId.slice(0, 8)}: ${opts.tag}`,
+      detail: `Exit code: ${opts.exitCode}`,
+      passedChecks: opts.exitCode === 0 ? 1 : 0,
+      failedChecks: opts.exitCode > 0 ? 1 : 0,
+      warningChecks: 0,
+    },
+    checks: [],
+    honesty: {
+      claim: 'Trace ledger event records session audit result.',
+      verified: ['trace tag', 'session id'],
+      notObservable: ['agent compliance beyond observable signals'],
+    },
+    sourceCommand: `forge0 trace ${opts.sessionId}`,
+  }, cliVersion);
+}
