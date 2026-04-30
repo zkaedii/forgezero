@@ -16,6 +16,13 @@ describe('runVerify parser helpers', () => {
     expect(parseLsRemoteHash('not-a-hash\trefs/tags/v1')).toBe(null);
   });
 
+  it('parseLsRemoteHash returns the peeled commit SHA for annotated tag output', () => {
+    const tagObjectSha = 'aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111';
+    const commitSha    = 'bbbb2222bbbb2222bbbb2222bbbb2222bbbb2222';
+    const out = `${tagObjectSha}\trefs/tags/v0.2.0\n${commitSha}\trefs/tags/v0.2.0^{}\n`;
+    expect(parseLsRemoteHash(out)).toBe(commitSha);
+  });
+
   it('parseAheadBehind handles valid output', () => {
     expect(parseAheadBehind('2\t1\n')).toEqual({ ahead: 2, behind: 1 });
     expect(parseAheadBehind('0\t0')).toEqual({ ahead: 0, behind: 0 });

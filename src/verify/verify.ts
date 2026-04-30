@@ -16,10 +16,17 @@ import type { VerifyMode, VerifyResult, VerifyOptions } from './types.js';
 
 /**
  * parseLsRemoteHash — extracts the 40-char SHA-1 from git ls-remote output.
+ * For annotated tags, prefers the peeled commit SHA (the line ending in ^{})
+ * over the tag-object SHA. Falls back to the first valid SHA for lightweight tags.
  */
 export function parseLsRemoteHash(output: string): string | null {
-  const first = output.trim().split(/\s+/)[0];
-  return first && /^[0-9a-f]{40}$/i.test(first) ? first : null;
+  const lines = output.trim().split('\n').filter(l => l.length > 0);
+  // Prefer peeled ref (annotated tag → commit SHA)
+  const peeledLine = lines.find(l => l.includes('^{}'));
+  const targetLine = peeledLine ?? lines[0];
+  if (!targetLine) return null;
+  const sha = targetLine.trim().split(/\s+/)[0];
+  return sha && /^[0-9a-f]{40}$/i.test(sha) ? sha : null;
 }
 
 /**
@@ -200,7 +207,7 @@ export function runVerify(
       if (version) {
         const tagName = `v${version}`;
         try {
-          const out = execSync(`git ls-remote --tags origin ${tagName}`, { cwd: repoRoot, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] });
+          const out = execSync(`git ls-remote --tags origin "${tagName}" "${tagName}^{}"`, { cwd: repoRoot, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] });
           const remoteHash = parseLsRemoteHash(out);
           const match = remoteHash === head;
           checks.push({
